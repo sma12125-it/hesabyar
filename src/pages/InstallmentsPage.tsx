@@ -22,7 +22,17 @@ export function InstallmentsPage({
   const { plans, items } = useStore()
   const navigate = useNavigate()
   const today = todayIso()
-  const active = plans.filter((p) => p.status === 'active')
+  const badgeRank: Record<PlanBadge, number> = { overdue: 0, 'due-soon': 1, ok: 2 }
+  const active = plans
+    .filter((p) => p.status === 'active')
+    .slice()
+    .sort((a, b) => {
+      const aItems = items.filter((i) => i.planId === a.id)
+      const bItems = items.filter((i) => i.planId === b.id)
+      const rank = badgeRank[planBadge(aItems, today)] - badgeRank[planBadge(bItems, today)]
+      if (rank !== 0) return rank
+      return a.createdAt - b.createdAt
+    })
   const completed = plans.filter((p) => p.status === 'completed')
   const archived = plans.filter((p) => p.status === 'archived')
   const empty = plans.length === 0
