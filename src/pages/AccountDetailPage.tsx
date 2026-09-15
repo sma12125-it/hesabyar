@@ -20,9 +20,7 @@ export function AccountDetailPage({
   const { accounts, transactions, archiveAccount, restoreAccount } = useStore()
   const [menu, setMenu] = useState(false)
   const account = accounts.find((a) => a.id === id)
-  const txs = transactions.filter(
-    (t) => t.accountId === id || t.counterpartyAccountId === id,
-  )
+  const txs = transactions.filter((t) => t.accountId === id)
 
   if (!account) {
     return (
@@ -143,7 +141,7 @@ export function AccountDetailPage({
             <h2>تراکنشی روی این حساب نیست</h2>
           </div>
         ) : (
-          txs.map((tx) => <TxRow key={tx.id} tx={tx} accounts={accounts} />)
+          txs.map((tx) => <TxRow key={tx.id} tx={tx} accounts={accounts} forAccountId={account.id} />)
         )}
       </div>
     </div>

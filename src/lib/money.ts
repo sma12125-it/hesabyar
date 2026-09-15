@@ -1,3 +1,5 @@
+import type { TxKind } from '../types'
+
 const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
 
 export function toFaDigits(value: string | number): string {
@@ -19,8 +21,13 @@ export function formatRial(amount: number): string {
   return abs.toLocaleString('fa-IR')
 }
 
-export function applySignedBalance(balance: number, kind: 'expense' | 'income' | 'transfer', amount: number, direction: 'out' | 'in' = 'out'): number {
-  if (kind === 'income' || (kind === 'transfer' && direction === 'in')) {
+export function applySignedBalance(
+  balance: number,
+  kind: TxKind | 'transfer',
+  amount: number,
+  direction: 'out' | 'in' = 'out',
+): number {
+  if (kind === 'income' || kind === 'transferIn' || (kind === 'transfer' && direction === 'in')) {
     return balance + amount
   }
   return balance - amount

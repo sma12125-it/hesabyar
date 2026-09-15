@@ -1,8 +1,12 @@
-import { toFaDigits } from '../lib/money'
+import { formatRial, toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
 import { BalanceHero } from '../components/BalanceHero'
-import { TxRow } from '../components/TxRow'
+import { TxRow, visibleLedger } from '../components/TxRow'
+import { formatPersianDate } from '../lib/dates'
+import { homeInstallmentHints } from '../lib/installments'
+import { todayIso } from '../lib/iso'
 import type { Dispatch, SetStateAction } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 interface HomePageProps {
   onScroll: (compact: boolean) => void
@@ -14,8 +18,11 @@ interface HomePageProps {
 }
 
 export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, onSettings }: HomePageProps) {
-  const { activeAccounts, totalBalance, transactions, accounts } = useStore()
-  const recent = transactions.slice(0, 8)
+  const { activeAccounts, totalBalance, transactions, accounts, plans, items } = useStore()
+  const navigate = useNavigate()
+  const recent = visibleLedger(transactions).slice(0, 8)
+  const today = todayIso()
+  const hints = homeInstallmentHints(plans, items, today).slice(0, 4)
 
   return (
     <div
@@ -64,11 +71,52 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
           <span className="qa-ico">⇄</span>
           <span className="label">انتقال</span>
         </button>
-        <button className="qa-item" type="button" onClick={() => setToast('اقساط در اسپرینت بعد')}>
+        <button className="qa-item" type="button" onClick={() => navigate('/installments')}>
           <span className="qa-ico">📅</span>
           <span className="label">اقساط</span>
         </button>
       </div>
+
+      {hints.length > 0 ? (
+        <>
+          <div className="section-head">
+            <h2>سررسید اقساط</h2>
+            <button className="link" type="button" onClick={() => navigate('/installments')}>
+              همه
+            </button>
+          </div>
+          <div className="plan-list">
+            {hints.map(({ plan, item, kind }) => (
+              <button
+                key={item.id}
+                className="plan-card lg-light"
+                type="button"
+                onClick={() => navigate(`/installments/${plan.id}`)}
+              >
+                <div className="plan-top">
+                  <div>
+                    <div className="plan-name">{plan.name}</div>
+                    <div className="plan-meta">
+                      {kind === 'overdue'
+                        ? `معوق · سررسید ${formatPersianDate(item.dueDate)}`
+                        : `سررسید ${formatPersianDate(item.dueDate)}`}
+                    </div>
+                  </div>
+                  <div className="plan-right">
+                    <span className={`badge ${kind === 'overdue' ? 'overdue' : 'due-soon'}`}>
+                      {kind === 'overdue' ? 'معوق' : 'به‌زودی'}
+                    </span>
+                    <div className="plan-amount">
+                      {formatRial(item.amount)}
+                      <span className="unit">ریال</span>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       <div className="section-head">
         <h2>تراکنش‌های اخیر</h2>

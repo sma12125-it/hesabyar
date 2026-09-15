@@ -4,24 +4,50 @@ import { formatRial } from '../lib/money'
 import type { Account, Transaction } from '../types'
 
 export function txTitle(tx: Transaction, accounts: Account[]): string {
-  if (tx.note) return tx.note
-  if (tx.kind === 'transfer') {
+  if (tx.kind === 'transferOut' || tx.kind === 'transferIn') {
+    if (tx.kind === 'transferIn') {
+      const from = accounts.find((a) => a.id === tx.counterpartyAccountId)
+      return tx.note || (from ? `انتقال از ${from.name}` : 'انتقال')
+    }
     const to = accounts.find((a) => a.id === tx.counterpartyAccountId)
-    return to ? `انتقال به ${to.name}` : 'انتقال'
+    return tx.note || (to ? `انتقال به ${to.name}` : 'انتقال')
   }
+  if (tx.note) return tx.note
   return getCategory(tx.categoryId)?.name ?? 'تراکنش'
 }
 
 export function txIcon(tx: Transaction): string {
-  if (tx.kind === 'transfer') return '⇄'
+  if (tx.kind === 'transferOut' || tx.kind === 'transferIn') return '⇄'
   return getCategory(tx.categoryId)?.icon ?? '💳'
 }
 
-export function TxRow({ tx, accounts }: { tx: Transaction; accounts: Account[] }) {
+export function isTransferKind(kind: Transaction['kind']): boolean {
+  return kind === 'transferOut' || kind === 'transferIn'
+}
+
+/** Home / all-tx hide the inbound leg so a transfer appears once. */
+export function visibleLedger(transactions: Transaction[]): Transaction[] {
+  return transactions.filter((tx) => tx.kind !== 'transferIn')
+}
+
+export function TxRow({
+  tx,
+  accounts,
+  forAccountId,
+}: {
+  tx: Transaction
+  accounts: Account[]
+  forAccountId?: string
+}) {
   const account = accounts.find((a) => a.id === tx.accountId)
   const amtClass = tx.kind === 'income' ? 'income' : tx.kind === 'expense' ? 'expense' : ''
   const subBits = [formatRelativeFa(tx.createdAt)]
-  if (account) subBits.push(account.name)
+  if (!forAccountId && account) subBits.push(account.name)
+  if (forAccountId && isTransferKind(tx.kind)) {
+    const otherId = tx.counterpartyAccountId
+    const other = accounts.find((a) => a.id === otherId)
+    if (other) subBits.push(other.name)
+  }
 
   return (
     <div className="tx-row lg-light">

@@ -1,8 +1,9 @@
 import { useStore } from '../store/Store'
-import { TxRow } from '../components/TxRow'
+import { TxRow, visibleLedger } from '../components/TxRow'
 
 export function AllTransactionsPage({ onBack }: { onBack: () => void }) {
   const { transactions, accounts } = useStore()
+  const rows = visibleLedger(transactions)
 
   return (
     <>
@@ -16,10 +17,10 @@ export function AllTransactionsPage({ onBack }: { onBack: () => void }) {
           </button>
         </div>
         <div className="tx-list" style={{ overflowY: 'auto', flex: 1 }}>
-          {transactions.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="sheet-sub">تراکنشی ثبت نشده</p>
           ) : (
-            transactions.map((tx) => <TxRow key={tx.id} tx={tx} accounts={accounts} />)
+            rows.map((tx) => <TxRow key={tx.id} tx={tx} accounts={accounts} />)
           )}
         </div>
       </div>

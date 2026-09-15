@@ -1,3 +1,4 @@
+import { parseIsoDate } from './iso'
 import { toFaDigits } from './money'
 
 const RELATIVE_DAY_MS = 24 * 60 * 60 * 1000
@@ -23,4 +24,24 @@ export function formatRelativeFa(ts: number, now = Date.now()): string {
   if (diffDays < 30) return `${toFaDigits(Math.floor(diffDays / 7))} هفته پیش`
   if (diffDays < 365) return `${toFaDigits(Math.floor(diffDays / 30))} ماه پیش`
   return `${toFaDigits(Math.floor(diffDays / 365))} سال پیش`
+}
+
+function isoToLocalDate(iso: string): Date | null {
+  const parts = parseIsoDate(iso)
+  if (!parts) return null
+  return new Date(parts.year, parts.month - 1, parts.day)
+}
+
+/** e.g. ۱۲ شهریور */
+export function formatPersianDate(iso: string): string {
+  const date = isoToLocalDate(iso)
+  if (!date) return iso
+  return new Intl.DateTimeFormat('fa-IR', { day: 'numeric', month: 'long' }).format(date)
+}
+
+/** e.g. ۱ مهر ۱۴۰۵ */
+export function formatPersianDateFull(iso: string): string {
+  const date = isoToLocalDate(iso)
+  if (!date) return iso
+  return new Intl.DateTimeFormat('fa-IR', { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
 }

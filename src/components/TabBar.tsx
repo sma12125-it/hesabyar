@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 export function TabBar({ compact, onQuickEntry }: { compact?: boolean; onQuickEntry: () => void }) {
   const { pathname } = useLocation()
   const accountsActive = pathname.startsWith('/accounts')
+  const installmentsActive = pathname.startsWith('/installments')
 
   return (
     <nav className={`tab-bar${compact ? ' compact' : ''}`} aria-label="ناوبری اصلی">
@@ -18,7 +19,7 @@ export function TabBar({ compact, onQuickEntry }: { compact?: boolean; onQuickEn
         <span className="ico">💳</span>
         <span className="lbl">حساب‌ها</span>
       </NavLink>
-      <NavLink to="/installments" className={({ isActive }) => `tab${isActive ? ' active' : ''}`}>
+      <NavLink to="/installments" className={() => `tab${installmentsActive ? ' active' : ''}`}>
         <span className="ico">📅</span>
         <span className="lbl">اقساط</span>
       </NavLink>

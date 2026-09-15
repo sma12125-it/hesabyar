@@ -6,23 +6,31 @@ import { Toast } from './components/Toast'
 import { QuickEntrySheet } from './components/QuickEntrySheet'
 import { AccountFormSheet } from './components/AccountFormSheet'
 import { TransferSheet } from './components/TransferSheet'
+import { InstallmentPlanSheet } from './components/InstallmentPlanSheet'
+import { InstallmentPaySheet } from './components/InstallmentPaySheet'
 import { HomePage } from './pages/HomePage'
 import { AccountsPage } from './pages/AccountsPage'
 import { AccountDetailPage } from './pages/AccountDetailPage'
 import { PlaceholderPage } from './pages/PlaceholderPage'
 import { AllTransactionsPage } from './pages/AllTransactionsPage'
+import { InstallmentsPage } from './pages/InstallmentsPage'
+import { InstallmentDetailPage } from './pages/InstallmentDetailPage'
+import { remainingAmount } from './lib/installments'
+import { todayIso } from './lib/iso'
 import { StoreProvider, useStore } from './store/Store'
 
 export type Sheet =
   | { type: 'quick'; kind: 'expense' | 'income'; accountId?: string }
   | { type: 'account'; accountId?: string }
   | { type: 'transfer'; fromId?: string }
+  | { type: 'installment-plan'; planId?: string }
+  | { type: 'installment-pay'; itemId: string }
   | { type: 'all-tx' }
   | { type: 'settings' }
 
 function Shell() {
   const location = useLocation()
-  const { ready, error, totalBalance, accounts, resetDemo, wipeAll } = useStore()
+  const { ready, error, totalBalance, accounts, plans, items, resetDemo, wipeAll } = useStore()
   const [compact, setCompact] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [sheet, setSheet] = useState<Sheet | null>(null)
@@ -31,12 +39,21 @@ function Shell() {
 
   const isHome = location.pathname === '/'
   const isAccountsList = location.pathname === '/accounts'
+  const isInstallmentsList = location.pathname === '/installments'
   const sheetOpen = sheet !== null
   const hasVisibleAccounts = accounts.some((a) => !a.archived)
+  const hasPlans = plans.length > 0
   const editingAccount =
     sheet?.type === 'account' && sheet.accountId
       ? accounts.find((a) => a.id === sheet.accountId)
       : undefined
+  const editingPlan =
+    sheet?.type === 'installment-plan' && sheet.planId
+      ? plans.find((p) => p.id === sheet.planId)
+      : undefined
+  const payingItem =
+    sheet?.type === 'installment-pay' ? items.find((i) => i.id === sheet.itemId) : undefined
+  const payingPlan = payingItem ? plans.find((p) => p.id === payingItem.planId) : undefined
 
   if (error) {
     return (
@@ -79,10 +96,16 @@ function Shell() {
           <Route
             path="/installments"
             element={
-              <PlaceholderPage
-                title="اقساط"
-                icon="📅"
-                message="برنامه‌های قسط و پرداخت در اسپرینت بعد می‌آید."
+              <InstallmentsPage onScroll={onScroll} onCreate={() => setSheet({ type: 'installment-plan' })} />
+            }
+          />
+          <Route
+            path="/installments/:id"
+            element={
+              <InstallmentDetailRoute
+                onScroll={onScroll}
+                onEdit={(planId) => setSheet({ type: 'installment-plan', planId })}
+                onPay={(itemId) => setSheet({ type: 'installment-pay', itemId })}
               />
             }
           />
@@ -116,6 +139,12 @@ function Shell() {
           </button>
         ) : null}
 
+        {!sheetOpen && isInstallmentsList && hasPlans ? (
+          <button className="fab-pill" type="button" onClick={() => setSheet({ type: 'installment-plan' })}>
+            <span>＋</span> برنامه جدید
+          </button>
+        ) : null}
+
         {!sheetOpen ? (
           <TabBar compact={compact} onQuickEntry={() => setSheet({ type: 'quick', kind: 'expense' })} />
         ) : null}
@@ -135,7 +164,23 @@ function Shell() {
       ) : null}
 
       {sheet?.type === 'transfer' ? (
-        <TransferSheet presetFromId={sheet.fromId} onClose={() => setSheet(null)} />
+        <TransferSheet presetFromId={sheet.fromId} totalBalance={totalBalance} onClose={() => setSheet(null)} />
+      ) : null}
+
+      {sheet?.type === 'installment-plan' ? (
+        <InstallmentPlanSheet plan={editingPlan} onClose={() => setSheet(null)} />
+      ) : null}
+
+      {sheet?.type === 'installment-pay' && payingItem && payingPlan ? (
+        <InstallmentPaySheet
+          plan={payingPlan}
+          item={payingItem}
+          remaining={remainingAmount(
+            items.filter((i) => i.planId === payingPlan.id),
+            todayIso(),
+          )}
+          onClose={() => setSheet(null)}
+        />
       ) : null}
 
       {sheet?.type === 'all-tx' ? <AllTransactionsPage onBack={() => setSheet(null)} /> : null}
@@ -199,6 +244,25 @@ function AccountDetailRoute({
       onQuickEntry={() => setSheet({ type: 'quick', kind: 'expense', accountId: id })}
       onTransfer={() => setSheet({ type: 'transfer', fromId: id })}
       onEdit={() => setSheet({ type: 'account', accountId: id })}
+    />
+  )
+}
+
+function InstallmentDetailRoute({
+  onScroll,
+  onEdit,
+  onPay,
+}: {
+  onScroll: (compact: boolean) => void
+  onEdit: (planId: string) => void
+  onPay: (itemId: string) => void
+}) {
+  const { id } = useParams()
+  return (
+    <InstallmentDetailPage
+      onScroll={onScroll}
+      onEdit={() => id && onEdit(id)}
+      onPay={onPay}
     />
   )
 }
