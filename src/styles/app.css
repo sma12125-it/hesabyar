@@ -1,0 +1,278 @@
+/* HesabYar webapp shell — interactive + responsive overrides on locked glass-v2 */
+
+html,
+body,
+#root {
+  min-height: 100%;
+  height: 100%;
+}
+
+button,
+a {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+.page-stage {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 12px 28px;
+}
+
+.device {
+  flex-shrink: 0;
+}
+
+.device-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+.app {
+  flex: 1;
+  min-height: 0;
+}
+
+.app-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tab-bar {
+  transition:
+    height var(--motion-tab-compress),
+    padding var(--motion-tab-compress);
+}
+
+.tab-bar.compact {
+  height: 48px;
+  padding: 3px 6px;
+}
+
+.tab-bar.compact .lbl {
+  font-size: 8px;
+}
+
+a.tab {
+  text-decoration: none;
+  color: inherit;
+}
+
+.tab,
+.qa-item,
+.action-chip,
+.acct-row,
+.tx-row,
+.field-chip,
+.sheet-close,
+.back-btn,
+.icon-btn,
+.mic-fab,
+.fab-pill,
+.cta-confirm,
+.seg-btn,
+.option-item {
+  cursor: pointer;
+}
+
+button.acct-row,
+button.field-chip {
+  width: 100%;
+  font-family: inherit;
+  appearance: none;
+}
+
+.field-chip {
+  width: 100%;
+  text-align: right;
+  border: 0.5px solid rgba(255, 255, 255, 0.55);
+}
+
+.field-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hy-text);
+  padding: 0;
+}
+
+.field-input::placeholder {
+  font-weight: 500;
+  color: var(--hy-text-tertiary);
+}
+
+.amount-block {
+  cursor: text;
+  position: relative;
+}
+
+.amount-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  z-index: 3;
+}
+
+.seg-thumb.income {
+  right: auto;
+  left: 4px;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(187, 247, 208, 0.2) 45%,
+    rgba(134, 239, 172, 0.12) 100%
+  );
+  box-shadow:
+    0 2px 10px rgba(22, 163, 74, 0.1),
+    inset 0 1.5px 0 rgba(255, 255, 255, 1),
+    inset 0 -0.5px 0 rgba(15, 23, 42, 0.04);
+}
+
+.seg-btn.active.income {
+  color: var(--hy-income);
+}
+
+.amount-caret.income {
+  background: var(--hy-income);
+}
+
+.sheet-scrim {
+  animation: scrim-in 180ms ease-out;
+}
+
+.glass-sheet {
+  animation: sheet-in var(--motion-sheet);
+  transform-origin: 50% 100%;
+}
+
+@keyframes scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 108px;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hy-text);
+  white-space: nowrap;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 0.5px solid rgba(255, 255, 255, 0.8);
+  box-shadow: var(--shadow-btn);
+}
+
+.loading-center {
+  position: relative;
+  z-index: 10;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  color: var(--hy-text-secondary);
+}
+
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+
+.menu-card {
+  position: absolute;
+  top: 58px;
+  left: 18px;
+  z-index: 45;
+  min-width: 180px;
+  padding: 8px;
+  border-radius: 18px;
+}
+
+.menu-card button {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hy-text);
+  text-align: right;
+}
+
+.menu-card button:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.hidden-status .icons,
+.hidden-status .time {
+  opacity: 0;
+}
+
+@media (max-width: 480px) {
+  html,
+  body {
+    background: var(--wall-base);
+  }
+
+  .page-stage {
+    padding: 0;
+    min-height: 100%;
+    height: 100%;
+  }
+
+  .device {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden;
+  }
+
+  .status-bar {
+    height: max(12px, env(safe-area-inset-top, 0px));
+    padding: env(safe-area-inset-top, 0px) 18px 0;
+  }
+
+  .status-bar .time,
+  .status-bar .icons {
+    display: none;
+  }
+}
