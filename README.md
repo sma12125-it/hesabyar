@@ -6,6 +6,8 @@ Personal accounting for the browser. Sprint 1: home, accounts, and quick expense
 
 **Repo:** https://github.com/sma12125-it/hesabyar
 
+If that URL 404s, enable Pages once (repo admin): [Settings → Pages](https://github.com/sma12125-it/hesabyar/settings/pages) → **Deploy from a branch** → `gh-pages` / `/` (root) → Save. The production build is already on `gh-pages`.
+
 ## Sprint 1
 
 - Home: total balance of active accounts, recent transactions, quick actions
