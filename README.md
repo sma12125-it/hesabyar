@@ -39,6 +39,8 @@ npm run build
 npm run preview
 ```
 
+The deploy workflow publishes `dist` to `gh-pages` and also copies the built `index.html` + `assets/` onto `main` so **Settings → Pages → Deploy from `main` / (root)** works.
+
 ## Architecture
 
 - Vite + React + TypeScript
