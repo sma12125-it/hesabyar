@@ -45,7 +45,6 @@ html, body {
     radial-gradient(ellipse 85% 60% at 70% 92%, rgba(14, 165, 233, 0.04) 0%, transparent 55%),
     radial-gradient(ellipse 55% 45% at 28% 72%, rgba(167, 139, 250, 0.035) 0%, transparent 50%),
     linear-gradient(165deg, #FAFBFC 0%, #F7F8FA 45%, #F5F6F8 100%);
-  animation: wallpaper-breathe 10s ease-in-out infinite alternate;
 }
 
 .wallpaper::before {
@@ -55,7 +54,6 @@ html, body {
   background:
     radial-gradient(circle 200px at 35% 38%, rgba(13, 148, 136, 0.04), transparent 70%),
     radial-gradient(circle 240px at 72% 58%, rgba(124, 58, 237, 0.035), transparent 70%);
-  animation: mesh-drift 14s ease-in-out infinite alternate;
   pointer-events: none;
 }
 
@@ -152,6 +150,22 @@ html, body {
 
 .lg-light::before,
 .lg-light::after { opacity: 0.85; }
+
+/* List rows: tinted glass fill WITHOUT backdrop-filter (N rows × 70px blur was janky on mobile Chrome). */
+.lg-row {
+  position: relative;
+  background: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.38) 0%,
+    rgba(255, 255, 255, 0.16) 100%
+  );
+  border: 0.5px solid rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 1px 8px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.lg-row::before,
+.lg-row::after { content: none; }
 
 /* ── Status bar ── */
 .status-bar {
@@ -462,8 +476,8 @@ html, body {
     rgba(255, 255, 255, 0.08) 50%,
     rgba(204, 251, 241, 0.08) 100%
   );
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
   box-shadow:
     0 2px 10px rgba(13, 148, 136, 0.10),
     inset 0 1.5px 0 rgba(255, 255, 255, 1),
@@ -696,8 +710,8 @@ html, body {
     rgba(254, 226, 226, 0.16) 45%,
     rgba(252, 165, 165, 0.10) 100%
   );
-  backdrop-filter: blur(32px) saturate(200%);
-  -webkit-backdrop-filter: blur(32px) saturate(200%);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
   box-shadow:
     0 2px 10px rgba(220, 38, 38, 0.10),
     inset 0 1.5px 0 rgba(255, 255, 255, 1),
@@ -1186,7 +1200,9 @@ html, body {
 
 .sheet-body-scroll {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   position: relative;

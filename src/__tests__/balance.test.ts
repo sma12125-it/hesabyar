@@ -91,4 +91,11 @@ describe('validateTransfer', () => {
   it('accepts a valid transfer', () => {
     expect(validateTransfer(base, [from, to])).toBeNull()
   })
+
+  it('accepts transferring the exact source balance and still rejects archived / same-account', () => {
+    expect(validateTransfer({ ...base, amount: 100_000 }, [from, to])).toBeNull()
+    expect(validateTransfer({ ...base, amount: 100_001 }, [from, to])).toBe(
+      'مبلغ از موجودی قابل انتقال بیشتر است',
+    )
+  })
 })

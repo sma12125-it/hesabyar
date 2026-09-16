@@ -181,8 +181,11 @@ export async function listRawAccounts(): Promise<Array<Omit<Account, 'balance'> 
   return requestToPromise(db.transaction('accounts').objectStore('accounts').getAll())
 }
 
-export async function listAccounts(): Promise<Account[]> {
-  const [raw, txs] = await Promise.all([listRawAccounts(), listTransactions()])
+export async function listAccounts(existingTxs?: Transaction[]): Promise<Account[]> {
+  const [raw, txs] = await Promise.all([
+    listRawAccounts(),
+    existingTxs ? Promise.resolve(existingTxs) : listTransactions(),
+  ])
   return hydrateAccounts(raw, txs).sort((a, b) => a.createdAt - b.createdAt)
 }
 
@@ -198,12 +201,50 @@ export async function putAccount(account: Account): Promise<void> {
   await txDone(tx)
 }
 
+export function sortTransactions(rows: Transaction[]): Transaction[] {
+  return rows.slice().sort((a, b) => {
+    const byDate = b.date.localeCompare(a.date)
+    if (byDate !== 0) return byDate
+    return b.createdAt - a.createdAt
+  })
+}
+
 export async function listTransactions(): Promise<Transaction[]> {
   const db = await openDb()
   const rows = await requestToPromise<Transaction[]>(
     db.transaction('transactions').objectStore('transactions').getAll(),
   )
-  return rows.sort((a, b) => b.createdAt - a.createdAt)
+  return sortTransactions(rows)
+}
+
+export async function applyDataPatch(patch: {
+  putAccounts?: Account[]
+  deleteAccountIds?: string[]
+  putTransactions?: Transaction[]
+  deleteTransactionIds?: string[]
+  putPlans?: InstallmentPlan[]
+  deletePlanIds?: string[]
+  putItems?: InstallmentItem[]
+  deleteItemIds?: string[]
+}): Promise<void> {
+  const db = await openDb()
+  const tx = db.transaction(
+    ['accounts', 'transactions', 'installmentPlans', 'installmentItems'],
+    'readwrite',
+  )
+  const accStore = tx.objectStore('accounts')
+  const txStore = tx.objectStore('transactions')
+  const planStore = tx.objectStore('installmentPlans')
+  const itemStore = tx.objectStore('installmentItems')
+  for (const id of patch.deleteAccountIds ?? []) accStore.delete(id)
+  for (const account of patch.putAccounts ?? []) accStore.put(persistableAccount(account))
+  for (const id of patch.deleteTransactionIds ?? []) txStore.delete(id)
+  for (const row of patch.putTransactions ?? []) txStore.put(row)
+  for (const id of patch.deletePlanIds ?? []) planStore.delete(id)
+  for (const plan of patch.putPlans ?? []) planStore.put(plan)
+  for (const id of patch.deleteItemIds ?? []) itemStore.delete(id)
+  for (const item of patch.putItems ?? []) itemStore.put(item)
+  await txDone(tx)
 }
 
 export async function putTransaction(txRow: Transaction): Promise<void> {

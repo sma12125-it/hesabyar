@@ -43,3 +43,31 @@ export function validateAmount(amount: number): string | null {
   if (!Number.isInteger(amount) || amount <= 0) return 'مبلغ باید بیشتر از صفر باشد'
   return null
 }
+
+export function validateExpenseBalance(amount: number, available: number): string | null {
+  if (amount > available) return 'موجودی حساب کافی نیست'
+  return null
+}
+
+/** Expense/transfer room on an account, crediting back a tx that is being replaced. */
+export function availableAfterReplacing(
+  balance: number,
+  replacing: { kind: string; amount: number; accountId: string } | null,
+  nextAccountId: string,
+): number {
+  if (!replacing || replacing.accountId !== nextAccountId) return balance
+  if (replacing.kind === 'expense' || replacing.kind === 'transferOut') return balance + replacing.amount
+  if (replacing.kind === 'income' || replacing.kind === 'transferIn') return balance - replacing.amount
+  return balance
+}
+
+/** Decimal parser for interest rates (Persian digits and ٫ allowed). */
+export function parseDecimalInput(raw: string): number {
+  const western = raw
+    .replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d)))
+    .replace(/٫/g, '.')
+    .replace(/[^\d.]/g, '')
+  if (!western) return 0
+  const n = Number(western)
+  return Number.isFinite(n) ? n : 0
+}

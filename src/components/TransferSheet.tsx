@@ -8,20 +8,31 @@ import { PickerSheet } from './PickerSheet'
 export function TransferSheet({
   presetFromId,
   totalBalance,
+  transferId,
   onClose,
 }: {
   presetFromId?: string
   totalBalance: number
+  transferId?: string
   onClose: () => void
 }) {
-  const { activeAccounts, addTransfer } = useStore()
-  const [fromId, setFromId] = useState(presetFromId ?? activeAccounts[0]?.id ?? '')
+  const { activeAccounts, addTransfer, updateTransaction, transactions } = useStore()
+  const existingOut = transferId
+    ? transactions.find((t) => t.transferId === transferId && t.kind === 'transferOut')
+    : undefined
+  const existingIn = transferId
+    ? transactions.find((t) => t.transferId === transferId && t.kind === 'transferIn')
+    : undefined
+  const [fromId, setFromId] = useState(existingOut?.accountId ?? presetFromId ?? activeAccounts[0]?.id ?? '')
   const [toId, setToId] = useState(
-    () => activeAccounts.find((a) => a.id !== (presetFromId ?? activeAccounts[0]?.id))?.id ?? '',
+    () =>
+      existingIn?.accountId ??
+      activeAccounts.find((a) => a.id !== (existingOut?.accountId ?? presetFromId ?? activeAccounts[0]?.id))?.id ??
+      '',
   )
-  const [amountRaw, setAmountRaw] = useState('')
-  const [note, setNote] = useState('')
-  const [date, setDate] = useState(() => todayIso())
+  const [amountRaw, setAmountRaw] = useState(existingOut ? String(existingOut.amount) : '')
+  const [note, setNote] = useState(existingOut?.note ?? '')
+  const [date, setDate] = useState(() => existingOut?.date ?? todayIso())
   const [picker, setPicker] = useState<'from' | 'to' | 'note' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -30,7 +41,10 @@ export function TransferSheet({
   const from = activeAccounts.find((a) => a.id === fromId)
   const to = activeAccounts.find((a) => a.id === toId)
   const amount = parseRialInput(amountRaw)
-  const over = Boolean(from && amount > from.balance)
+  const available = from
+    ? from.balance + (existingOut && existingOut.accountId === from.id ? existingOut.amount : 0)
+    : 0
+  const over = Boolean(from && amount > available)
   const empty = !from || !to || amount <= 0
   const same = Boolean(from && to && from.id === to.id)
   const disabled = saving || empty || over || same
@@ -39,13 +53,23 @@ export function TransferSheet({
     setError(null)
     setSaving(true)
     try {
-      await addTransfer({
-        amount,
-        fromAccountId: fromId,
-        toAccountId: toId,
-        note,
-        date,
-      })
+      if (existingOut) {
+        await updateTransaction(existingOut.id, {
+          amount,
+          fromAccountId: fromId,
+          toAccountId: toId,
+          note,
+          date,
+        })
+      } else {
+        await addTransfer({
+          amount,
+          fromAccountId: fromId,
+          toAccountId: toId,
+          note,
+          date,
+        })
+      }
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'انتقال نشد')
@@ -99,7 +123,7 @@ export function TransferSheet({
           <button className="back-btn" type="button" onClick={onClose} aria-label="بازگشت">
             ›
           </button>
-          <h1>انتقال</h1>
+          <h1>{existingOut ? 'ویرایش انتقال' : 'انتقال'}</h1>
           <button className="sheet-close" type="button" onClick={onClose} aria-label="بستن">
             ✕
           </button>
@@ -126,7 +150,7 @@ export function TransferSheet({
                 </div>
                 {from ? (
                   <div className="avail-hint">
-                    موجودی قابل انتقال: <strong>{formatRial(from.balance)} ریال</strong>
+                    موجودی قابل انتقال: <strong>{formatRial(available)} ریال</strong>
                   </div>
                 ) : null}
               </div>
@@ -196,7 +220,7 @@ export function TransferSheet({
             onClick={() => void submit()}
             style={{ marginTop: 'auto' }}
           >
-            {saving ? 'در حال انتقال…' : 'انتقال'}
+            {saving ? 'در حال انتقال…' : existingOut ? 'ذخیره انتقال' : 'انتقال'}
           </button>
         </div>
       </div>

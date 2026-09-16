@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { INSTALLMENT_CATEGORY_ID, getCategory } from '../lib/categories'
 import { formatPersianDateFull } from '../lib/dates'
 import { DateField } from './DateField'
 import { todayIso } from '../lib/iso'
-import { formatRial, parseRialInput } from '../lib/money'
+import { tryLoanSchedule } from '../lib/loan'
+import { formatRial, parseDecimalInput, parseRialInput, toFaDigits } from '../lib/money'
 import { planHasPayment } from '../lib/installments'
 import { useStore } from '../store/Store'
 import { PickerSheet } from './PickerSheet'
-import type { InstallmentPlan } from '../types'
+import type { InstallmentPlan, InstallmentPlanKind } from '../types'
 
 export function InstallmentPlanSheet({
   plan,
@@ -19,8 +20,11 @@ export function InstallmentPlanSheet({
   const { activeAccounts, items, plans, createInstallmentPlan, updateInstallmentPlan } = useStore()
   const planItems = items.filter((i) => i.planId === plan?.id)
   const locked = Boolean(plan && planHasPayment(planItems))
+  const [kind, setKind] = useState<InstallmentPlanKind>(plan?.kind ?? 'fixed')
   const [name, setName] = useState(plan?.name ?? '')
-  const [amountRaw, setAmountRaw] = useState(plan ? String(plan.installmentAmount) : '')
+  const [amountRaw, setAmountRaw] = useState(plan && plan.kind !== 'loan' ? String(plan.installmentAmount) : '')
+  const [principalRaw, setPrincipalRaw] = useState(plan?.principal != null ? String(plan.principal) : '')
+  const [rateRaw, setRateRaw] = useState(plan?.annualRatePercent != null ? String(plan.annualRatePercent) : '')
   const [countRaw, setCountRaw] = useState(plan ? String(plan.totalCount) : '')
   const [startDate, setStartDate] = useState(plan?.startDate ?? todayIso())
   const [accountId, setAccountId] = useState(plan?.defaultAccountId ?? activeAccounts[0]?.id ?? '')
@@ -30,9 +34,15 @@ export function InstallmentPlanSheet({
 
   const account = activeAccounts.find((a) => a.id === accountId)
   const amount = parseRialInput(amountRaw)
+  const principal = parseRialInput(principalRaw)
+  const rate = parseDecimalInput(rateRaw)
   const count = parseRialInput(countRaw)
   const category = getCategory(INSTALLMENT_CATEGORY_ID)
   const activeCount = plans.filter((p) => p.status === 'active').length
+  const schedule = useMemo(
+    () => (kind === 'loan' && principal > 0 && count > 0 ? tryLoanSchedule(principal, rate, count) : null),
+    [kind, principal, rate, count],
+  )
 
   async function save() {
     setError(null)
@@ -42,11 +52,34 @@ export function InstallmentPlanSheet({
         await updateInstallmentPlan(plan.id, {
           name,
           defaultAccountId: accountId,
-          ...(locked ? {} : { installmentAmount: amount, totalCount: count, startDate }),
+          ...(locked
+            ? {}
+            : kind === 'loan'
+              ? {
+                  kind: 'loan',
+                  principal,
+                  annualRatePercent: rate,
+                  totalCount: count,
+                  startDate,
+                  installmentAmount: schedule?.monthlyPayment ?? 1,
+                }
+              : { kind: 'fixed', installmentAmount: amount, totalCount: count, startDate, principal: undefined, annualRatePercent: undefined }),
+        })
+      } else if (kind === 'loan') {
+        await createInstallmentPlan({
+          name,
+          kind: 'loan',
+          principal,
+          annualRatePercent: rate,
+          installmentAmount: schedule?.monthlyPayment ?? 1,
+          totalCount: count,
+          startDate,
+          defaultAccountId: accountId,
         })
       } else {
         await createInstallmentPlan({
           name,
+          kind: 'fixed',
           installmentAmount: amount,
           totalCount: count,
           startDate,
@@ -68,7 +101,7 @@ export function InstallmentPlanSheet({
           <button
             key={a.id}
             type="button"
-            className="option-item lg-light"
+            className="option-item lg-row"
             onClick={() => {
               setAccountId(a.id)
               setPicker(null)
@@ -84,6 +117,8 @@ export function InstallmentPlanSheet({
       </PickerSheet>
     )
   }
+
+  const lastDiffers = Boolean(schedule && schedule.amounts[0] !== schedule.amounts[schedule.amounts.length - 1])
 
   return (
     <>
@@ -124,38 +159,95 @@ export function InstallmentPlanSheet({
                 />
               </div>
             </div>
-            <div className={`field-chip${locked ? ' chip-readonly' : ''}`}>
-              <span className="ficon">💰</span>
-              <div style={{ flex: 1 }}>
-                <div className="flabel">مبلغ هر قسط</div>
-                {locked ? (
-                  <div className="fvalue">
-                    {formatRial(amount)}
-                    <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--hy-text-tertiary)', marginRight: 4 }}>
-                      ریال
-                    </span>
+
+            {!locked ? (
+              <div className="seg type-seg" role="tablist" aria-label="نوع برنامه">
+                <div className={`seg-thumb${kind === 'loan' ? ' type-bank' : ''}`} aria-hidden="true" />
+                <button
+                  className={`seg-btn cash${kind === 'fixed' ? ' active' : ''}`}
+                  type="button"
+                  onClick={() => setKind('fixed')}
+                >
+                  قسط ثابت
+                </button>
+                <button
+                  className={`seg-btn bank${kind === 'loan' ? ' active' : ''}`}
+                  type="button"
+                  onClick={() => setKind('loan')}
+                >
+                  وام بانکی
+                </button>
+              </div>
+            ) : null}
+
+            {kind === 'loan' && !locked ? (
+              <>
+                <div className="field-chip">
+                  <span className="ficon">🏦</span>
+                  <div style={{ flex: 1 }}>
+                    <div className="flabel">مبلغ اصل وام</div>
+                    <input
+                      className="field-input"
+                      inputMode="numeric"
+                      placeholder="۰"
+                      value={principalRaw}
+                      onChange={(e) => setPrincipalRaw(e.target.value)}
+                      aria-label="مبلغ اصل وام به ریال"
+                    />
                   </div>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--hy-text-tertiary)' }}>ریال</span>
+                </div>
+                <div className="field-chip">
+                  <span className="ficon">٪</span>
+                  <div style={{ flex: 1 }}>
+                    <div className="flabel">نرخ سود سالانه</div>
+                    <input
+                      className="field-input"
+                      inputMode="decimal"
+                      placeholder="۱۸"
+                      value={rateRaw}
+                      onChange={(e) => setRateRaw(e.target.value)}
+                      aria-label="نرخ سود سالانه"
+                    />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--hy-text-tertiary)' }}>٪</span>
+                </div>
+              </>
+            ) : (
+              <div className={`field-chip${locked ? ' chip-readonly' : ''}`}>
+                <span className="ficon">💰</span>
+                <div style={{ flex: 1 }}>
+                  <div className="flabel">{kind === 'loan' ? 'قسط ماهانه' : 'مبلغ هر قسط'}</div>
+                  {locked ? (
+                    <div className="fvalue">
+                      {formatRial(plan?.installmentAmount ?? amount)}
+                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--hy-text-tertiary)', marginRight: 4 }}>
+                        ریال
+                      </span>
+                    </div>
+                  ) : (
+                    <input
+                      className="field-input"
+                      inputMode="numeric"
+                      placeholder="۰"
+                      value={amountRaw}
+                      onChange={(e) => setAmountRaw(e.target.value)}
+                      aria-label="مبلغ هر قسط به ریال"
+                    />
+                  )}
+                </div>
+                {!locked ? (
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--hy-text-tertiary)' }}>ریال</span>
                 ) : (
-                  <input
-                    className="field-input"
-                    inputMode="numeric"
-                    placeholder="۰"
-                    value={amountRaw}
-                    onChange={(e) => setAmountRaw(e.target.value)}
-                    aria-label="مبلغ هر قسط به ریال"
-                  />
+                  <span className="readonly-tag">قفل</span>
                 )}
               </div>
-              {!locked ? (
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--hy-text-tertiary)' }}>ریال</span>
-              ) : (
-                <span className="readonly-tag">قفل</span>
-              )}
-            </div>
+            )}
+
             <div className={`field-chip${locked ? ' chip-readonly' : ''}`}>
               <span className="ficon">＃</span>
               <div style={{ flex: 1 }}>
-                <div className="flabel">تعداد اقساط</div>
+                <div className="flabel">{kind === 'loan' ? 'مدت (ماه)' : 'تعداد اقساط'}</div>
                 {locked ? (
                   <div className="fvalue">{count} قسط</div>
                 ) : (
@@ -202,6 +294,27 @@ export function InstallmentPlanSheet({
               <span className="readonly-tag">ثابت</span>
             </div>
           </div>
+
+          {schedule ? (
+            <div className="plan-stats loan-preview">
+              <div>
+                <strong>{formatRial(schedule.monthlyPayment)}</strong>
+                قسط ماهانه
+              </div>
+              <div>
+                <strong>{formatRial(schedule.totalInterest)}</strong>
+                مجموع سود
+              </div>
+              <div>
+                <strong>{formatRial(schedule.totalRepayment)}</strong>
+                بازپرداخت
+              </div>
+            </div>
+          ) : null}
+          {lastDiffers ? (
+            <p className="sheet-sub">قسط آخر برای گرد کردن ریال ممکن است کمی متفاوت باشد · {toFaDigits(schedule!.months)} قسط</p>
+          ) : null}
+
           <button
             className="cta-confirm"
             type="button"

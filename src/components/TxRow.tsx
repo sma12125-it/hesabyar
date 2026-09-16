@@ -1,16 +1,20 @@
-import { formatRelativeFa } from '../lib/dates'
+import { memo } from 'react'
+import { formatRelativeFromIso } from '../lib/dates'
 import { accountIcon, getCategory } from '../lib/categories'
 import { formatRial } from '../lib/money'
 import type { Account, Transaction } from '../types'
+import { SwipeRow } from './SwipeRow'
+import { useUiActions } from './UiActions'
 
 export function txTitle(tx: Transaction, accounts: Account[]): string {
   if (tx.kind === 'transferOut' || tx.kind === 'transferIn') {
+    if (tx.note) return tx.note
     if (tx.kind === 'transferIn') {
       const from = accounts.find((a) => a.id === tx.counterpartyAccountId)
-      return tx.note || (from ? `انتقال از ${from.name}` : 'انتقال')
+      return from ? `انتقال از ${from.name}` : 'انتقال'
     }
     const to = accounts.find((a) => a.id === tx.counterpartyAccountId)
-    return tx.note || (to ? `انتقال به ${to.name}` : 'انتقال')
+    return to ? `انتقال به ${to.name}` : 'انتقال'
   }
   if (tx.note) return tx.note
   return getCategory(tx.categoryId)?.name ?? 'تراکنش'
@@ -30,7 +34,7 @@ export function visibleLedger(transactions: Transaction[]): Transaction[] {
   return transactions.filter((tx) => tx.kind !== 'transferIn')
 }
 
-export function TxRow({
+export const TxRow = memo(function TxRow({
   tx,
   accounts,
   forAccountId,
@@ -39,9 +43,10 @@ export function TxRow({
   accounts: Account[]
   forAccountId?: string
 }) {
+  const actions = useUiActions()
   const account = accounts.find((a) => a.id === tx.accountId)
   const amtClass = tx.kind === 'income' ? 'income' : tx.kind === 'expense' ? 'expense' : ''
-  const subBits = [formatRelativeFa(tx.createdAt)]
+  const subBits = [formatRelativeFromIso(tx.date)]
   if (!forAccountId && account) subBits.push(account.name)
   if (forAccountId && isTransferKind(tx.kind)) {
     const otherId = tx.counterpartyAccountId
@@ -50,38 +55,51 @@ export function TxRow({
   }
 
   return (
-    <div className="tx-row lg-light">
-      <div className="tx-ico">{txIcon(tx)}</div>
-      <div className="tx-meta">
-        <div className="tx-title">{txTitle(tx, accounts)}</div>
-        <div className="tx-sub">{subBits.join(' · ')}</div>
+    <SwipeRow
+      onEdit={actions ? () => actions.editTransaction(tx.id) : undefined}
+      onDelete={actions ? () => actions.deleteTransaction(tx.id) : undefined}
+    >
+      <div className="tx-row lg-row">
+        <div className="tx-ico">{txIcon(tx)}</div>
+        <div className="tx-meta">
+          <div className="tx-title">{txTitle(tx, accounts)}</div>
+          <div className="tx-sub">{subBits.join(' · ')}</div>
+        </div>
+        <div className={`tx-amt ${amtClass}`.trim()}>
+          {formatRial(tx.amount)}
+          <span className="unit">ریال</span>
+        </div>
       </div>
-      <div className={`tx-amt ${amtClass}`.trim()}>
-        {formatRial(tx.amount)}
-        <span className="unit">ریال</span>
-      </div>
-    </div>
+    </SwipeRow>
   )
-}
+})
 
-export function AccountRow({
+export const AccountRow = memo(function AccountRow({
   account,
   onClick,
 }: {
   account: Account
   onClick: () => void
 }) {
+  const actions = useUiActions()
+  const canSwipe = !account.archived && Boolean(actions)
+
   return (
-    <button className="acct-row lg-light" type="button" onClick={onClick}>
-      <div className="acct-ico">{accountIcon(account.type, account.name)}</div>
-      <div className="acct-meta">
-        <div className="acct-name">{account.name}</div>
-        <span className={`badge ${account.type}`}>{account.type === 'cash' ? 'نقد' : 'بانک'}</span>
-      </div>
-      <div className="acct-bal">
-        {formatRial(account.balance)}
-        <span className="unit">ریال</span>
-      </div>
-    </button>
+    <SwipeRow
+      onEdit={canSwipe ? () => actions!.editAccount(account.id) : undefined}
+      onDelete={canSwipe ? () => actions!.deleteAccount(account.id) : undefined}
+    >
+      <button className="acct-row lg-row" type="button" onClick={onClick}>
+        <div className="acct-ico">{accountIcon(account.type, account.name)}</div>
+        <div className="acct-meta">
+          <div className="acct-name">{account.name}</div>
+          <span className={`badge ${account.type}`}>{account.type === 'cash' ? 'نقد' : 'بانک'}</span>
+        </div>
+        <div className="acct-bal">
+          {formatRial(account.balance)}
+          <span className="unit">ریال</span>
+        </div>
+      </button>
+    </SwipeRow>
   )
-}
+})

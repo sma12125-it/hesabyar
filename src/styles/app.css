@@ -80,7 +80,8 @@ a.tab {
 .fab-pill,
 .cta-confirm,
 .seg-btn,
-.option-item {
+.option-item,
+.swipe-action {
   cursor: pointer;
 }
 
@@ -192,8 +193,8 @@ button.field-chip {
   color: var(--hy-text);
   white-space: nowrap;
   background: linear-gradient(165deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.18));
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
   border: 0.5px solid rgba(255, 255, 255, 0.8);
   box-shadow: var(--shadow-btn);
 }
@@ -267,6 +268,81 @@ button.inst-row:disabled {
 
 .field-chip {
   position: relative;
+}
+
+.swipe-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  touch-action: pan-y;
+}
+
+.swipe-wrap:has(.plan-card) {
+  border-radius: 22px;
+}
+
+.swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+  z-index: 0;
+}
+
+.swipe-action {
+  width: 88px;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+}
+
+.swipe-action.delete {
+  background: linear-gradient(180deg, rgba(248, 113, 113, 0.95), rgba(185, 28, 28, 0.95));
+}
+
+.swipe-action.edit {
+  background: linear-gradient(180deg, rgba(45, 212, 191, 0.95), rgba(13, 148, 136, 0.95));
+}
+
+.swipe-front {
+  position: relative;
+  z-index: 1;
+  will-change: transform;
+}
+
+.swipe-front > * {
+  width: 100%;
+}
+
+.glass-sheet.confirm-sheet {
+  top: auto;
+  min-height: 220px;
+  height: auto;
+  max-height: 70%;
+}
+
+.loan-preview {
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wallpaper,
+  .wallpaper::before,
+  .amount-caret,
+  .sheet-scrim,
+  .glass-sheet,
+  .voice-pulse,
+  .waveform span {
+    animation: none !important;
+  }
+
+  .glass-sheet {
+    transform: none;
+  }
 }
 
 .hidden-status .icons,

@@ -70,6 +70,26 @@ describe('installment status badges', () => {
     expect(validatePlanUpdate({ name: 'قسط موبایل' }, items, [account])).toBeNull()
   })
 
+  it('builds loan items with a possibly different last payment', () => {
+    expect(
+      validatePlanInput(
+        {
+          name: 'وام خودرو',
+          installmentAmount: 1,
+          totalCount: 12,
+          startDate: today,
+          defaultAccountId: 'acc',
+          kind: 'loan',
+          principal: 12_000_000,
+          annualRatePercent: 18,
+        },
+        [account],
+      ),
+    ).toBeNull()
+    const items = generateInstallmentItems('p', [100, 100, 120], 3, today)
+    expect(items.map((i) => i.amount)).toEqual([100, 100, 120])
+  })
+
   it('validates create input', () => {
     expect(
       validatePlanInput(

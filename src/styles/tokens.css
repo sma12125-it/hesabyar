@@ -66,18 +66,20 @@
     rgba(124, 58, 237, 0.025) 100%
   );
 
-  /* ═══ BLUR / SATURATE — AFTER ═══
-     BEFORE: blur 72 / 80 / light 48 · sat 160% / 175%
-     AFTER:  blur 96 / 108 / light 72 · sat 210% / 230%
+  /* ═══ BLUR / SATURATE — polish sprint (perf > decorative row blur) ═══
+     List rows no longer use backdrop-filter (see .lg-row).
+     Hero / tab / sheet keep real glass at moderate radii.
+     BEFORE: blur 96 / 108 / light 72 / chrome 100 / sheet 110 · sat 210% / 230%
+     AFTER:  blur 28 / 40 / light 12 / chrome 36 / sheet 44 · sat 160% / 175%
   */
-  --glass-blur: 96px;
-  --glass-blur-strong: 108px;
-  --glass-blur-light: 72px;
-  --glass-blur-chrome: 100px;
-  --glass-blur-sheet: 110px;
-  --glass-saturate: 210%;
-  --glass-saturate-strong: 230%;
-  --glass-saturate-chrome: 220%;
+  --glass-blur: 28px;
+  --glass-blur-strong: 40px;
+  --glass-blur-light: 12px;
+  --glass-blur-chrome: 36px;
+  --glass-blur-sheet: 44px;
+  --glass-saturate: 160%;
+  --glass-saturate-strong: 175%;
+  --glass-saturate-chrome: 170%;
 
   /* ═══ SPECULAR — AFTER ═══
      BEFORE: top-strip peak 0.78 → 0.22 @ 6% · rim inset white 0.92

@@ -10,6 +10,8 @@ import {
 import { daysUntil, todayIso } from '../lib/iso'
 import { formatRial, toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
+import { SwipeRow } from '../components/SwipeRow'
+import { useUiActions } from '../components/UiActions'
 import type { InstallmentItem } from '../types'
 
 export function InstallmentDetailPage({
@@ -24,6 +26,7 @@ export function InstallmentDetailPage({
   const { id } = useParams()
   const navigate = useNavigate()
   const { plans, items, archiveInstallmentPlan, restoreInstallmentPlan } = useStore()
+  const actions = useUiActions()
   const [menu, setMenu] = useState(false)
   const plan = plans.find((p) => p.id === id)
   const planItems = items.filter((i) => i.planId === id).sort((a, b) => a.index - b.index)
@@ -93,6 +96,15 @@ export function InstallmentDetailPage({
               آرشیو برنامه
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              setMenu(false)
+              actions?.deletePlan(plan.id)
+            }}
+          >
+            حذف برنامه
+          </button>
         </div>
       ) : null}
 
@@ -127,7 +139,7 @@ export function InstallmentDetailPage({
           </div>
           <div>
             <strong>{formatRial(plan.installmentAmount)}</strong>
-            هر قسط
+            {plan.kind === 'loan' ? 'قسط نوعی' : 'هر قسط'}
           </div>
           <div>
             {overdueItem && plan.status === 'active' ? (
@@ -138,6 +150,22 @@ export function InstallmentDetailPage({
             {overdueItem && plan.status === 'active' ? 'وضعیت' : 'سررسید بعد'}
           </div>
         </div>
+        {plan.kind === 'loan' && plan.principal != null ? (
+          <div className="plan-stats" style={{ marginTop: 6 }}>
+            <div>
+              <strong>{formatRial(plan.principal)}</strong>
+              اصل وام
+            </div>
+            <div>
+              <strong>{toFaDigits(plan.annualRatePercent ?? 0)}٪</strong>
+              سود سالانه
+            </div>
+            <div>
+              <strong>{formatRial(planItems.reduce((sum, i) => sum + i.amount, 0) - plan.principal)}</strong>
+              مجموع سود
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="action-row">
@@ -180,10 +208,22 @@ function ItemRow({
   const status = itemEffectiveStatus(item, today)
   const lateDays = status === 'overdue' ? Math.abs(daysUntil(item.dueDate, today)) : 0
   const clickable = status !== 'paid' && onPay
+  const actions = useUiActions()
 
   return (
+    <SwipeRow
+      onEdit={
+        actions
+          ? () => {
+              if (status === 'paid' && item.transactionId) actions.editTransaction(item.transactionId)
+              else actions.editItem(item.id)
+            }
+          : undefined
+      }
+      onDelete={actions ? () => actions.deleteItem(item.id) : undefined}
+    >
     <button
-      className={`inst-row lg-light${status === 'overdue' ? ' highlight-overdue' : ''}`}
+      className={`inst-row lg-row${status === 'overdue' ? ' highlight-overdue' : ''}`}
       type="button"
       onClick={() => {
         if (clickable) onPay(item.id)
@@ -217,5 +257,6 @@ function ItemRow({
         </span>
       </div>
     </button>
+    </SwipeRow>
   )
 }

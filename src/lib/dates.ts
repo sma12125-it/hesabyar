@@ -26,6 +26,12 @@ export function formatRelativeFa(ts: number, now = Date.now()): string {
   return `${toFaDigits(Math.floor(diffDays / 365))} سال پیش`
 }
 
+export function formatRelativeFromIso(iso: string, now = Date.now()): string {
+  const date = isoToLocalDate(iso)
+  if (!date) return iso
+  return formatRelativeFa(date.getTime(), now)
+}
+
 function isoToLocalDate(iso: string): Date | null {
   const parts = parseIsoDate(iso)
   if (!parts) return null

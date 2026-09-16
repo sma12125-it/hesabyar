@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/Store'
 import { BalanceHero } from '../components/BalanceHero'
 import { TxRow } from '../components/TxRow'
+import { useUiActions } from '../components/UiActions'
 
 export function AccountDetailPage({
   onScroll,
@@ -18,6 +19,7 @@ export function AccountDetailPage({
   const { id } = useParams()
   const navigate = useNavigate()
   const { accounts, transactions, archiveAccount, restoreAccount } = useStore()
+  const actions = useUiActions()
   const [menu, setMenu] = useState(false)
   const account = accounts.find((a) => a.id === id)
   const txs = transactions.filter((t) => t.accountId === id)
@@ -81,6 +83,15 @@ export function AccountDetailPage({
               آرشیو حساب
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              setMenu(false)
+              actions?.deleteAccount(account.id)
+            }}
+          >
+            حذف حساب
+          </button>
         </div>
       ) : null}
 
