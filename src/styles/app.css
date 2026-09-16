@@ -80,7 +80,12 @@ a.tab {
 .fab-pill,
 .cta-confirm,
 .seg-btn,
-.option-item {
+.option-item,
+.jalali-cal-nav-btn,
+.jalali-cal-title,
+.jalali-cal-day,
+.jalali-cal-month,
+.jalali-cal-today {
   cursor: pointer;
 }
 
@@ -255,18 +260,138 @@ button.inst-row:disabled {
   cursor: default;
 }
 
-.date-overlay {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
+.field-chip {
+  position: relative;
+}
+
+.jalali-cal-scrim {
+  z-index: 40;
+}
+
+.glass-sheet.jalali-cal-sheet {
+  z-index: 41;
+  top: auto;
+  height: auto;
+  min-height: 0;
+  max-height: min(78%, 560px);
+}
+
+.jalali-cal {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 4px;
+}
+
+.jalali-cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jalali-cal-nav-btn,
+.jalali-cal-title,
+.jalali-cal-day,
+.jalali-cal-month {
+  font-family: inherit;
+  color: inherit;
   cursor: pointer;
 }
 
-.field-chip {
-  position: relative;
+.jalali-cal-nav-btn {
+  min-width: 64px;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 0.5px solid rgba(255, 255, 255, 0.7);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hy-text-secondary);
+}
+
+.jalali-cal-title {
+  flex: 1;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--hy-text);
+  text-align: center;
+}
+
+.jalali-cal-week,
+.jalali-cal-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.jalali-cal-week span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--hy-text-tertiary);
+  padding: 4px 0;
+}
+
+.jalali-cal-pad {
+  min-height: 40px;
+}
+
+.jalali-cal-day {
+  min-height: 44px;
+  border-radius: 14px;
+  border: 0.5px solid transparent;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.jalali-cal-day.today {
+  box-shadow: inset 0 0 0 1.5px var(--hy-teal);
+}
+
+.jalali-cal-day.selected,
+.jalali-cal-month.selected {
+  background: linear-gradient(
+    165deg,
+    rgba(45, 212, 191, 0.95) 0%,
+    rgba(13, 148, 136, 0.92) 100%
+  );
+  color: #fff;
+  box-shadow:
+    0 6px 16px rgba(13, 148, 136, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.jalali-cal-day.selected.today {
+  box-shadow:
+    0 6px 16px rgba(13, 148, 136, 0.28),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.7);
+}
+
+.jalali-cal-months {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.jalali-cal-month {
+  min-height: 48px;
+  border-radius: 16px;
+  border: 0.5px solid rgba(255, 255, 255, 0.65);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04));
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.jalali-cal-today {
+  margin-top: 4px;
 }
 
 .swipe-wrap {
@@ -345,7 +470,8 @@ button.inst-row:disabled {
   .sheet-scrim,
   .glass-sheet,
   .voice-pulse,
-  .waveform span {
+  .waveform span,
+  .jalali-cal-scrim {
     animation: none !important;
   }
 
