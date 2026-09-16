@@ -7,6 +7,7 @@ import { tryLoanSchedule } from '../lib/loan'
 import { formatRial, parseDecimalInput, parseRialInput, toFaDigits } from '../lib/money'
 import { planHasPayment } from '../lib/installments'
 import { useStore } from '../store/Store'
+import { AmountField } from './AmountField'
 import { PickerSheet } from './PickerSheet'
 import type { InstallmentPlan, InstallmentPlanKind } from '../types'
 
@@ -22,8 +23,8 @@ export function InstallmentPlanSheet({
   const locked = Boolean(plan && planHasPayment(planItems))
   const [kind, setKind] = useState<InstallmentPlanKind>(plan?.kind ?? 'fixed')
   const [name, setName] = useState(plan?.name ?? '')
-  const [amountRaw, setAmountRaw] = useState(plan && plan.kind !== 'loan' ? String(plan.installmentAmount) : '')
-  const [principalRaw, setPrincipalRaw] = useState(plan?.principal != null ? String(plan.principal) : '')
+  const [amount, setAmount] = useState(plan && plan.kind !== 'loan' ? plan.installmentAmount : 0)
+  const [principal, setPrincipal] = useState(plan?.principal ?? 0)
   const [rateRaw, setRateRaw] = useState(plan?.annualRatePercent != null ? String(plan.annualRatePercent) : '')
   const [countRaw, setCountRaw] = useState(plan ? String(plan.totalCount) : '')
   const [startDate, setStartDate] = useState(plan?.startDate ?? todayIso())
@@ -33,8 +34,6 @@ export function InstallmentPlanSheet({
   const [saving, setSaving] = useState(false)
 
   const account = activeAccounts.find((a) => a.id === accountId)
-  const amount = parseRialInput(amountRaw)
-  const principal = parseRialInput(principalRaw)
   const rate = parseDecimalInput(rateRaw)
   const count = parseRialInput(countRaw)
   const category = getCategory(INSTALLMENT_CATEGORY_ID)
@@ -186,13 +185,10 @@ export function InstallmentPlanSheet({
                   <span className="ficon">🏦</span>
                   <div style={{ flex: 1 }}>
                     <div className="flabel">مبلغ اصل وام</div>
-                    <input
-                      className="field-input"
-                      inputMode="numeric"
-                      placeholder="۰"
-                      value={principalRaw}
-                      onChange={(e) => setPrincipalRaw(e.target.value)}
-                      aria-label="مبلغ اصل وام به ریال"
+                    <AmountField
+                      value={principal}
+                      onChange={setPrincipal}
+                      ariaLabel="مبلغ اصل وام به ریال"
                     />
                   </div>
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--hy-text-tertiary)' }}>ریال</span>
@@ -226,13 +222,10 @@ export function InstallmentPlanSheet({
                       </span>
                     </div>
                   ) : (
-                    <input
-                      className="field-input"
-                      inputMode="numeric"
-                      placeholder="۰"
-                      value={amountRaw}
-                      onChange={(e) => setAmountRaw(e.target.value)}
-                      aria-label="مبلغ هر قسط به ریال"
+                    <AmountField
+                      value={amount}
+                      onChange={setAmount}
+                      ariaLabel="مبلغ هر قسط به ریال"
                     />
                   )}
                 </div>

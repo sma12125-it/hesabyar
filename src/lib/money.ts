@@ -21,6 +21,42 @@ export function formatRial(amount: number): string {
   return abs.toLocaleString('fa-IR')
 }
 
+/** Masked input value: grouped Persian digits, empty when the amount is 0. */
+export function formatRialInput(amount: number): string {
+  if (!Number.isFinite(amount) || Math.trunc(amount) === 0) return ''
+  return formatRial(amount)
+}
+
+/** Parse then re-format so typing always shows thousand separators. */
+export function maskRialInput(raw: string): string {
+  return formatRialInput(parseRialInput(raw))
+}
+
+function isRialDigit(ch: string): boolean {
+  return (ch >= '0' && ch <= '9') || (ch >= '۰' && ch <= '۹')
+}
+
+export function countRialDigits(value: string): number {
+  let n = 0
+  for (const ch of value) {
+    if (isRialDigit(ch)) n++
+  }
+  return n
+}
+
+/** Best-effort caret index after remasking, given how many digits sat before the caret. */
+export function caretFromRialDigitCount(display: string, digitsBefore: number): number {
+  if (digitsBefore <= 0) return 0
+  let n = 0
+  for (let i = 0; i < display.length; i++) {
+    if (isRialDigit(display[i]!)) {
+      n++
+      if (n >= digitsBefore) return i + 1
+    }
+  }
+  return display.length
+}
+
 export function applySignedBalance(
   balance: number,
   kind: TxKind | 'transfer',

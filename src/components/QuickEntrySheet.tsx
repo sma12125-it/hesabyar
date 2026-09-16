@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { categoriesFor, getCategory } from '../lib/categories'
 import { todayIso } from '../lib/iso'
-import { formatRial, parseRialInput } from '../lib/money'
+import { formatRial } from '../lib/money'
 import { useStore } from '../store/Store'
+import { AmountField } from './AmountField'
 import { DateField } from './DateField'
 import { PickerSheet } from './PickerSheet'
 import type { Account, Transaction } from '../types'
@@ -25,7 +26,7 @@ export function QuickEntrySheet({
   const [kind, setKind] = useState<'expense' | 'income'>(
     transaction?.kind === 'income' ? 'income' : transaction?.kind === 'expense' ? 'expense' : initialKind,
   )
-  const [amountRaw, setAmountRaw] = useState(transaction ? String(transaction.amount) : '')
+  const [amount, setAmount] = useState(transaction?.amount ?? 0)
   const [accountId, setAccountId] = useState(transaction?.accountId ?? presetAccountId ?? activeAccounts[0]?.id ?? '')
   const [categoryId, setCategoryId] = useState(
     () => transaction?.categoryId ?? categoriesFor(initialKind)[0]?.id ?? 'food',
@@ -35,13 +36,11 @@ export function QuickEntrySheet({
   const [picker, setPicker] = useState<'category' | 'account' | 'note' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const amountRef = useRef<HTMLInputElement>(null)
   const linked = Boolean(transaction?.installmentItemId)
 
   const cats = useMemo(() => categoriesFor(kind), [kind])
   const category = getCategory(categoryId) ?? cats[0]
   const account = activeAccounts.find((a) => a.id === accountId)
-  const amount = parseRialInput(amountRaw)
   const available =
     account && kind === 'expense'
       ? account.balance + (transaction?.kind === 'expense' && transaction.accountId === account.id ? transaction.amount : 0)
@@ -175,23 +174,14 @@ export function QuickEntrySheet({
           </button>
         </div>
 
-        <div className="amount-block" onClick={() => amountRef.current?.focus()}>
-          <div className="hint">مبلغ</div>
-          <div className="big">
-            <span className={`amount-caret${kind === 'income' ? ' income' : ''}`} />
-            {amount > 0 ? formatRial(amount) : '۰'}
-            <span className="cur">ریال</span>
-          </div>
-          <input
-            ref={amountRef}
-            className="amount-input"
-            inputMode="numeric"
-            autoFocus
-            value={amountRaw}
-            onChange={(e) => setAmountRaw(e.target.value)}
-            aria-label="مبلغ به ریال"
-          />
-        </div>
+        <AmountField
+          variant="hero"
+          value={amount}
+          onChange={setAmount}
+          autoFocus
+          caret={kind === 'income' ? 'income' : 'expense'}
+          ariaLabel="مبلغ به ریال"
+        />
 
         {error || over ? (
           <div className="banner error">

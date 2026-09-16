@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react'
-import { formatRial, parseRialInput } from '../lib/money'
+import { useState } from 'react'
+import { formatRial } from '../lib/money'
 import { todayIso } from '../lib/iso'
 import { useStore } from '../store/Store'
+import { AmountField } from './AmountField'
 import { DateField } from './DateField'
 import { PickerSheet } from './PickerSheet'
 
@@ -30,17 +31,15 @@ export function TransferSheet({
       activeAccounts.find((a) => a.id !== (existingOut?.accountId ?? presetFromId ?? activeAccounts[0]?.id))?.id ??
       '',
   )
-  const [amountRaw, setAmountRaw] = useState(existingOut ? String(existingOut.amount) : '')
+  const [amount, setAmount] = useState(existingOut?.amount ?? 0)
   const [note, setNote] = useState(existingOut?.note ?? '')
   const [date, setDate] = useState(() => existingOut?.date ?? todayIso())
   const [picker, setPicker] = useState<'from' | 'to' | 'note' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const amountRef = useRef<HTMLInputElement>(null)
 
   const from = activeAccounts.find((a) => a.id === fromId)
   const to = activeAccounts.find((a) => a.id === toId)
-  const amount = parseRialInput(amountRaw)
   const available = from
     ? from.balance + (existingOut && existingOut.accountId === from.id ? existingOut.amount : 0)
     : 0
@@ -168,22 +167,15 @@ export function TransferSheet({
             </button>
           </div>
 
-          <div className="amount-block" style={{ marginTop: over ? 16 : 20 }} onClick={() => amountRef.current?.focus()}>
-            <div className="hint">مبلغ</div>
-            <div className={`big${amount <= 0 ? ' placeholder-val' : ''}`} style={over ? { color: 'var(--hy-expense)' } : undefined}>
-              {amount > 0 ? formatRial(amount) : '۰'}
-              <span className="cur">ریال</span>
-            </div>
-            <input
-              ref={amountRef}
-              className="amount-input"
-              inputMode="numeric"
-              autoFocus
-              value={amountRaw}
-              onChange={(e) => setAmountRaw(e.target.value)}
-              aria-label="مبلغ انتقال به ریال"
-            />
-          </div>
+          <AmountField
+            variant="hero"
+            value={amount}
+            onChange={setAmount}
+            autoFocus
+            over={over}
+            ariaLabel="مبلغ انتقال به ریال"
+            style={{ marginTop: over ? 16 : 20 }}
+          />
 
           <button
             className="field-chip"

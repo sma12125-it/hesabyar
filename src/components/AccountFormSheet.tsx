@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { formatRial, parseRialInput, validateAccountName } from '../lib/money'
+import { formatRial, validateAccountName } from '../lib/money'
 import { useStore } from '../store/Store'
+import { AmountField } from './AmountField'
 import type { Account, AccountType } from '../types'
 
 export function AccountFormSheet({
@@ -15,7 +16,7 @@ export function AccountFormSheet({
   const { createAccount, updateAccount } = useStore()
   const [name, setName] = useState(account?.name ?? '')
   const [type, setType] = useState<AccountType>(account?.type ?? 'cash')
-  const [initialRaw, setInitialRaw] = useState(account ? String(account.balance) : '')
+  const [initialBalance, setInitialBalance] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const isEdit = Boolean(account)
@@ -36,7 +37,7 @@ export function AccountFormSheet({
         await createAccount({
           name,
           type,
-          initialBalance: parseRialInput(initialRaw),
+          initialBalance,
         })
       }
       onClose()
@@ -114,13 +115,10 @@ export function AccountFormSheet({
                 <span className="ficon">💰</span>
                 <div style={{ flex: 1 }}>
                   <div className="flabel">موجودی اولیه</div>
-                  <input
-                    className="field-input"
-                    inputMode="numeric"
-                    placeholder="۰"
-                    value={initialRaw}
-                    onChange={(e) => setInitialRaw(e.target.value)}
-                    aria-label="موجودی اولیه به ریال"
+                  <AmountField
+                    value={initialBalance}
+                    onChange={setInitialBalance}
+                    ariaLabel="موجودی اولیه به ریال"
                   />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--hy-text-tertiary)' }}>ریال</span>
