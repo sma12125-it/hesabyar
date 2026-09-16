@@ -80,8 +80,7 @@ a.tab {
 .fab-pill,
 .cta-confirm,
 .seg-btn,
-.option-item,
-.swipe-action {
+.option-item {
   cursor: pointer;
 }
 
@@ -284,34 +283,44 @@ button.inst-row:disabled {
 .swipe-bg {
   position: absolute;
   inset: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: stretch;
   z-index: 0;
+  pointer-events: none;
 }
 
-.swipe-action {
-  width: 88px;
-  border: none;
-  font-family: inherit;
+.swipe-peek {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   font-size: 13px;
   font-weight: 700;
   color: #fff;
-  cursor: pointer;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-.swipe-action.delete {
+.swipe-peek.delete {
+  left: 0;
   background: linear-gradient(180deg, rgba(248, 113, 113, 0.95), rgba(185, 28, 28, 0.95));
 }
 
-.swipe-action.edit {
+.swipe-peek.edit {
+  right: 0;
   background: linear-gradient(180deg, rgba(45, 212, 191, 0.95), rgba(13, 148, 136, 0.95));
+}
+
+.swipe-peek.armed {
+  filter: saturate(1.15) brightness(1.05);
 }
 
 .swipe-front {
   position: relative;
   z-index: 1;
   will-change: transform;
+  user-select: none;
 }
 
 .swipe-front > * {
@@ -342,6 +351,10 @@ button.inst-row:disabled {
 
   .glass-sheet {
     transform: none;
+  }
+
+  .swipe-front {
+    transition: none !important;
   }
 }
 

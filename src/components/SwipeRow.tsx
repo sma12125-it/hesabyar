@@ -1,8 +1,17 @@
+/**
+ * Gesture swipe (not sticky Mail buttons). Physical map: right → delete, left → edit.
+ * See `src/lib/swipe.ts`. After commit/cancel the row always snaps to translateX(0).
+ */
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
-
-const ACTION = 88
-const OPEN = 56
-const FULL = 148
+import {
+  SWIPE_AXIS_LOCK_PX,
+  SWIPE_SNAP_MS,
+  clampSwipeOffset,
+  prefersReducedMotion,
+  releaseSwipe,
+  swipeArmed,
+  swipeFeedbackMs,
+} from '../lib/swipe'
 
 export function SwipeRow({
   children,
@@ -14,26 +23,36 @@ export function SwipeRow({
   onDelete?: () => void
 }) {
   const [x, setX] = useState(0)
+  const [phase, setPhase] = useState<'idle' | 'dragging' | 'feedback'>('idle')
   const xRef = useRef(0)
   const startX = useRef(0)
   const startY = useRef(0)
-  const startOffset = useRef(0)
   const axis = useRef<'undecided' | 'h' | 'v'>('undecided')
   const dragging = useRef(false)
   const suppressClick = useRef(false)
+  const phaseRef = useRef(phase)
+  const timerRef = useRef<number>(0)
   const idRef = useRef(`swipe_${Math.random().toString(36).slice(2)}`)
+  const canEdit = Boolean(onEdit)
+  const canDelete = Boolean(onDelete)
+  const armed = swipeArmed(x, canEdit, canDelete)
+
+  phaseRef.current = phase
 
   useEffect(() => {
     const close = (event: Event) => {
       const detail = (event as CustomEvent<string>).detail
-      if (detail !== idRef.current && xRef.current !== 0) {
+      if (detail !== idRef.current && xRef.current !== 0 && phaseRef.current !== 'feedback') {
         xRef.current = 0
         setX(0)
+        setPhase('idle')
       }
     }
     window.addEventListener('hy-swipe', close)
     return () => window.removeEventListener('hy-swipe', close)
   }, [])
+
+  useEffect(() => () => window.clearTimeout(timerRef.current), [])
 
   if (!onEdit && !onDelete) return children
 
@@ -42,32 +61,51 @@ export function SwipeRow({
     setX(next)
   }
 
+  function finish(action: 'edit' | 'delete' | null, holdPx: number) {
+    dragging.current = false
+    axis.current = 'undecided'
+    if (!action) {
+      setPhase('idle')
+      commit(0)
+      return
+    }
+    const delay = swipeFeedbackMs(prefersReducedMotion())
+    commit(holdPx)
+    setPhase('feedback')
+    window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => {
+      commit(0)
+      setPhase('idle')
+      if (action === 'delete') onDelete?.()
+      else onEdit?.()
+    }, delay)
+  }
+
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return
+    if (phaseRef.current === 'feedback') return
     startX.current = event.clientX
     startY.current = event.clientY
-    startOffset.current = xRef.current
     axis.current = 'undecided'
     dragging.current = true
   }
 
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
-    if (!dragging.current) return
+    if (!dragging.current || phaseRef.current === 'feedback') return
     const dx = event.clientX - startX.current
     const dy = event.clientY - startY.current
     if (axis.current === 'undecided') {
-      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+      if (Math.abs(dx) < SWIPE_AXIS_LOCK_PX && Math.abs(dy) < SWIPE_AXIS_LOCK_PX) return
       axis.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
       if (axis.current === 'h') {
         event.currentTarget.setPointerCapture(event.pointerId)
         window.dispatchEvent(new CustomEvent('hy-swipe', { detail: idRef.current }))
+        setPhase('dragging')
       }
     }
     if (axis.current !== 'h') return
     event.preventDefault()
-    const min = onEdit ? -ACTION - 20 : 0
-    const max = onDelete ? ACTION + 20 : 0
-    commit(Math.max(min, Math.min(max, startOffset.current + dx)))
+    commit(clampSwipeOffset(dx, canEdit, canDelete))
   }
 
   function onPointerUp() {
@@ -75,18 +113,12 @@ export function SwipeRow({
     dragging.current = false
     if (axis.current === 'h') {
       suppressClick.current = true
-      const dx = xRef.current
-      if (onDelete && dx >= FULL) {
-        commit(0)
-        onDelete()
-      } else if (onEdit && dx <= -FULL) {
-        commit(0)
-        onEdit()
-      } else if (onDelete && dx >= OPEN) commit(ACTION)
-      else if (onEdit && dx <= -OPEN) commit(-ACTION)
-      else commit(0)
+      const { action, holdPx } = releaseSwipe(xRef.current, canEdit, canDelete)
+      finish(action, holdPx)
+      return
     }
     axis.current = 'undecided'
+    setPhase('idle')
   }
 
   function onClickCapture(event: { preventDefault: () => void; stopPropagation: () => void }) {
@@ -94,40 +126,37 @@ export function SwipeRow({
       event.preventDefault()
       event.stopPropagation()
       suppressClick.current = false
-      return
-    }
-    if (xRef.current !== 0) {
-      event.preventDefault()
-      event.stopPropagation()
-      commit(0)
     }
   }
 
   return (
-    <div className="swipe-wrap">
-      <div className="swipe-bg" dir="ltr">
-        {onDelete ? (
-          <button type="button" className="swipe-action delete" onClick={onDelete}>
-            حذف
-          </button>
-        ) : (
-          <span />
-        )}
-        {onEdit ? (
-          <button type="button" className="swipe-action edit" onClick={onEdit}>
-            ویرایش
-          </button>
-        ) : (
-          <span />
-        )}
+    <div
+      className={`swipe-wrap${armed ? ` swipe-armed-${armed}` : ''}`}
+      data-swipe-phase={phase}
+    >
+      <div className="swipe-bg" dir="ltr" aria-hidden="true">
+        {canDelete ? (
+          <div className={`swipe-peek delete${armed === 'delete' ? ' armed' : ''}`} style={{ width: Math.max(0, x) }}>
+            <span>حذف</span>
+          </div>
+        ) : null}
+        {canEdit ? (
+          <div className={`swipe-peek edit${armed === 'edit' ? ' armed' : ''}`} style={{ width: Math.max(0, -x) }}>
+            <span>ویرایش</span>
+          </div>
+        ) : null}
       </div>
       <div
-        className="swipe-front"
-        style={{ transform: `translate3d(${x}px, 0, 0)` }}
+        className={`swipe-front${phase === 'dragging' ? ' dragging' : ''}`}
+        style={{
+          transform: `translate3d(${x}px, 0, 0)`,
+          transition: phase === 'dragging' ? 'none' : `transform ${SWIPE_SNAP_MS}ms ease-out`,
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onLostPointerCapture={onPointerUp}
         onClickCapture={onClickCapture}
       >
         {children}
