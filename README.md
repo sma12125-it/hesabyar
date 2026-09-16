@@ -12,16 +12,20 @@ If that URL 404s, enable Pages once (repo admin): [Settings → Pages](https://g
 
 QA, performance, swipe edit/delete, and a bank-loan calculator. Budget / report / voice are still placeholders.
 
-### Swipe map (physical screen, iOS Mail / RTL trailing = left)
+### Swipe map (physical screen, RTL trailing = left)
 
-Swipe the **row** (not the empty page):
+Swipe is a **gesture that fires the action** — not an iOS-Mail sticky reveal. Action buttons never stay open.
 
-| Gesture | Reveals | Action |
-| --- | --- | --- |
-| Finger moves **right** (row follows) | Red **حذف** on the left | Hard delete, after confirm |
-| Finger moves **left** (row follows) | Teal **ویرایش** on the right | Opens the matching edit sheet |
-| Full swipe past ~150px | — | Same action as that side (delete still confirms) |
-| Tap while a row is open | — | Closes the row, does not navigate |
+The app is `dir="rtl"`, but finger movement uses **physical screen** coordinates (`clientX` / `translateX` do not flip):
+
+| Finger (physical) | Row motion | Peek (~200ms) | Action |
+| --- | --- | --- | --- |
+| **Right** (+dx) | slides right | Red **حذف** on the left | Delete, after confirm dialog |
+| **Left** (−dx) | slides left | Teal **ویرایش** on the right | Opens the matching edit sheet |
+| Short swipe (below ~72px) | snaps back | none | No action |
+| Cancel / release early | snaps fully closed | none | No action |
+
+During the swipe (and for ~150–300ms after a commit) the matching color/label peeks, then the row **always snaps fully closed**. There are no leftover tappable Edit/Delete buttons.
 
 Applies to:
 
