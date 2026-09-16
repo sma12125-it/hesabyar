@@ -42,6 +42,8 @@ export interface Category {
   kind: 'expense' | 'income' | 'transfer'
 }
 
+export type InstallmentPlanKind = 'fixed' | 'loan'
+
 export interface InstallmentPlan {
   id: string
   name: string
@@ -51,6 +53,10 @@ export interface InstallmentPlan {
   defaultAccountId: string
   categoryId: 'installments'
   status: InstallmentPlanStatus
+  /** Default `fixed` for Sprint 2 plans. `loan` uses declining-balance amortization. */
+  kind?: InstallmentPlanKind
+  principal?: number
+  annualRatePercent?: number
   createdAt: number
   updatedAt: number
 }
@@ -95,6 +101,9 @@ export interface CreateInstallmentPlanInput {
   totalCount: number
   startDate: string
   defaultAccountId: string
+  kind?: InstallmentPlanKind
+  principal?: number
+  annualRatePercent?: number
 }
 
 export interface UpdateInstallmentPlanInput {
@@ -103,4 +112,23 @@ export interface UpdateInstallmentPlanInput {
   installmentAmount?: number
   totalCount?: number
   startDate?: string
+  kind?: InstallmentPlanKind
+  principal?: number
+  annualRatePercent?: number
+}
+
+export interface UpdateTransactionInput {
+  amount?: number
+  accountId?: string
+  categoryId?: string
+  note?: string
+  date?: string
+  kind?: 'expense' | 'income'
+  fromAccountId?: string
+  toAccountId?: string
+}
+
+export interface UpdateInstallmentItemInput {
+  amount?: number
+  dueDate?: string
 }

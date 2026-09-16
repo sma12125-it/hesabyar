@@ -89,7 +89,7 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
             {hints.map(({ plan, item, kind }) => (
               <button
                 key={item.id}
-                className="plan-card lg-light"
+                className="plan-card lg-row"
                 type="button"
                 onClick={() => navigate(`/installments/${plan.id}`)}
               >

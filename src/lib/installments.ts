@@ -1,6 +1,7 @@
 import { INSTALLMENT_CATEGORY_ID } from './categories'
 import { addCalendarMonths, compareIso, daysUntil, isValidIsoDate } from './iso'
 import { createId } from './ids'
+import { buildLoanSchedule } from './loan'
 import { validateAmount } from './money'
 import type {
   Account,
@@ -16,22 +17,48 @@ export const MAX_INSTALLMENT_COUNT = 120
 
 export function generateInstallmentItems(
   planId: string,
-  amount: number,
+  amount: number | readonly number[],
   totalCount: number,
   startDate: string,
 ): InstallmentItem[] {
+  const amounts = typeof amount === 'number' ? null : amount
+  const count = amounts ? amounts.length : totalCount
   const items: InstallmentItem[] = []
-  for (let i = 0; i < totalCount; i += 1) {
+  for (let i = 0; i < count; i += 1) {
     items.push({
       id: createId('ii'),
       planId,
       index: i + 1,
       dueDate: addCalendarMonths(startDate, i),
-      amount,
+      amount: amounts ? amounts[i]! : (amount as number),
       status: 'pending',
     })
   }
   return items
+}
+
+export function scheduleForPlanInput(input: {
+  kind?: 'fixed' | 'loan'
+  installmentAmount: number
+  totalCount: number
+  principal?: number
+  annualRatePercent?: number
+}): { installmentAmount: number; amounts: number[]; principal?: number; annualRatePercent?: number; kind: 'fixed' | 'loan' } {
+  if (input.kind === 'loan') {
+    const schedule = buildLoanSchedule(input.principal ?? 0, input.annualRatePercent ?? 0, input.totalCount)
+    return {
+      kind: 'loan',
+      installmentAmount: schedule.monthlyPayment,
+      amounts: schedule.amounts,
+      principal: schedule.principal,
+      annualRatePercent: schedule.annualRatePercent,
+    }
+  }
+  return {
+    kind: 'fixed',
+    installmentAmount: input.installmentAmount,
+    amounts: Array.from({ length: input.totalCount }, () => input.installmentAmount),
+  }
 }
 
 export function itemEffectiveStatus(
@@ -81,13 +108,21 @@ export function planHasPayment(items: InstallmentItem[]): boolean {
 export function validatePlanInput(input: CreateInstallmentPlanInput, accounts: Account[]): string | null {
   if (!input.name.trim()) return 'نام برنامه الزامی است'
   if (input.name.trim().length > 48) return 'نام برنامه خیلی طولانی است'
-  const amountError = validateAmount(input.installmentAmount)
-  if (amountError) return amountError
   if (!Number.isInteger(input.totalCount) || input.totalCount < 1) return 'تعداد اقساط باید حداقل ۱ باشد'
   if (input.totalCount > MAX_INSTALLMENT_COUNT) return 'تعداد اقساط خیلی زیاد است'
   if (!isValidIsoDate(input.startDate)) return 'تاریخ شروع نامعتبر است'
   const account = accounts.find((a) => a.id === input.defaultAccountId)
   if (!account || account.archived) return 'حساب پرداخت معتبر نیست'
+  if (input.kind === 'loan') {
+    try {
+      buildLoanSchedule(input.principal ?? 0, input.annualRatePercent ?? -1, input.totalCount)
+    } catch (err) {
+      return err instanceof Error ? err.message : 'وام نامعتبر است'
+    }
+    return null
+  }
+  const amountError = validateAmount(input.installmentAmount)
+  if (amountError) return amountError
   return null
 }
 
@@ -97,13 +132,28 @@ export function validatePlanUpdate(
   accounts: Account[],
 ): string | null {
   const locked = planHasPayment(items)
-  if (locked && (patch.installmentAmount != null || patch.totalCount != null || patch.startDate != null)) {
+  if (
+    locked &&
+    (patch.installmentAmount != null ||
+      patch.totalCount != null ||
+      patch.startDate != null ||
+      patch.kind != null ||
+      patch.principal != null ||
+      patch.annualRatePercent != null)
+  ) {
     return 'پس از اولین پرداخت فقط نام و حساب قابل ویرایش است'
   }
   const name = patch.name
   if (name != null) {
     if (!name.trim()) return 'نام برنامه الزامی است'
     if (name.trim().length > 48) return 'نام برنامه خیلی طولانی است'
+  }
+  if (patch.kind === 'loan') {
+    try {
+      buildLoanSchedule(patch.principal ?? 0, patch.annualRatePercent ?? -1, patch.totalCount ?? 1)
+    } catch (err) {
+      return err instanceof Error ? err.message : 'وام نامعتبر است'
+    }
   }
   if (patch.installmentAmount != null) {
     const amountError = validateAmount(patch.installmentAmount)

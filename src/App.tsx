@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { PhoneShell } from './components/PhoneShell'
 import { TabBar } from './components/TabBar'
@@ -8,6 +8,9 @@ import { AccountFormSheet } from './components/AccountFormSheet'
 import { TransferSheet } from './components/TransferSheet'
 import { InstallmentPlanSheet } from './components/InstallmentPlanSheet'
 import { InstallmentPaySheet } from './components/InstallmentPaySheet'
+import { InstallmentItemSheet } from './components/InstallmentItemSheet'
+import { ConfirmSheet } from './components/ConfirmSheet'
+import { UiActionsContext, type UiActions } from './components/UiActions'
 import { HomePage } from './pages/HomePage'
 import { AccountsPage } from './pages/AccountsPage'
 import { AccountDetailPage } from './pages/AccountDetailPage'
@@ -22,15 +25,18 @@ import { StoreProvider, useStore } from './store/Store'
 export type Sheet =
   | { type: 'quick'; kind: 'expense' | 'income'; accountId?: string }
   | { type: 'account'; accountId?: string }
-  | { type: 'transfer'; fromId?: string }
+  | { type: 'transfer'; fromId?: string; transferId?: string }
   | { type: 'installment-plan'; planId?: string }
   | { type: 'installment-pay'; itemId: string }
+  | { type: 'installment-item'; itemId: string }
+  | { type: 'tx-edit'; txId: string }
   | { type: 'all-tx' }
   | { type: 'settings' }
+  | { type: 'confirm'; title: string; message: string; run: () => Promise<void> }
 
 function Shell() {
   const location = useLocation()
-  const { ready, error, totalBalance, accounts, plans, items, resetDemo, wipeAll } = useStore()
+  const { ready, error, totalBalance, accounts, transactions, plans, items, resetDemo, wipeAll, deleteTransaction, deleteAccount, deleteInstallmentPlan, deleteInstallmentItem } = useStore()
   const [compact, setCompact] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [sheet, setSheet] = useState<Sheet | null>(null)
@@ -54,6 +60,70 @@ function Shell() {
   const payingItem =
     sheet?.type === 'installment-pay' ? items.find((i) => i.id === sheet.itemId) : undefined
   const payingPlan = payingItem ? plans.find((p) => p.id === payingItem.planId) : undefined
+  const editingItem =
+    sheet?.type === 'installment-item' ? items.find((i) => i.id === sheet.itemId) : undefined
+  const editingTx = sheet?.type === 'tx-edit' ? transactions.find((t) => t.id === sheet.txId) : undefined
+
+  const uiActions = useMemo<UiActions>(
+    () => ({
+      editTransaction: (id) => {
+        const tx = transactions.find((row) => row.id === id)
+        if (!tx) return
+        if (tx.kind === 'transferOut' || tx.kind === 'transferIn') {
+          setSheet({ type: 'transfer', transferId: tx.transferId })
+        } else {
+          setSheet({ type: 'tx-edit', txId: id })
+        }
+      },
+      deleteTransaction: (id) => {
+        const tx = transactions.find((row) => row.id === id)
+        if (!tx) return
+        const transfer = tx.kind === 'transferOut' || tx.kind === 'transferIn'
+        const linked = Boolean(tx.installmentItemId)
+        setSheet({
+          type: 'confirm',
+          title: 'حذف تراکنش؟',
+          message: transfer
+            ? 'هر دو پایهٔ انتقال حذف می‌شود و موجودی مبدأ و مقصد اصلاح می‌گردد.'
+            : linked
+              ? 'پرداخت قسط لغو می‌شود؛ خود قسط در برنامه می‌ماند و موجودی برمی‌گردد.'
+              : 'این تراکنش حذف می‌شود و موجودی حساب به‌روز می‌گردد.',
+          run: () => deleteTransaction(id),
+        })
+      },
+      editAccount: (id) => setSheet({ type: 'account', accountId: id }),
+      deleteAccount: (id) =>
+        setSheet({
+          type: 'confirm',
+          title: 'حذف حساب؟',
+          message:
+            'حساب و تراکنش‌هایش حذف می‌شوند. پایه‌های انتقال در حساب‌های دیگر هم پاک می‌شوند. پرداخت اقساط این حساب لغو می‌شود ولی خود اقساط می‌مانند.',
+          run: () => deleteAccount(id),
+        }),
+      editPlan: (id) => setSheet({ type: 'installment-plan', planId: id }),
+      deletePlan: (id) =>
+        setSheet({
+          type: 'confirm',
+          title: 'حذف برنامه اقساط؟',
+          message: 'برنامه، همه اقساط و هزینه‌های پرداخت‌شده حذف می‌شوند و موجودی حساب‌ها برمی‌گردد.',
+          run: () => deleteInstallmentPlan(id),
+        }),
+      editItem: (id) => setSheet({ type: 'installment-item', itemId: id }),
+      deleteItem: (id) => {
+        const item = items.find((row) => row.id === id)
+        const paid = Boolean(item?.transactionId || item?.status === 'paid')
+        setSheet({
+          type: 'confirm',
+          title: 'حذف قسط؟',
+          message: paid
+            ? 'این قسط و هزینهٔ پرداخت‌شده حذف می‌شوند؛ موجودی حساب برمی‌گردد و قسط از جدول خارج می‌شود.'
+            : 'این قسط از برنامه حذف می‌شود و شماره‌گذاری بقیه به‌روز می‌گردد.',
+          run: () => deleteInstallmentItem(id),
+        })
+      },
+    }),
+    [transactions, items, deleteTransaction, deleteAccount, deleteInstallmentPlan, deleteInstallmentItem],
+  )
 
   if (error) {
     return (
@@ -73,6 +143,7 @@ function Shell() {
 
   return (
     <PhoneShell>
+      <UiActionsContext.Provider value={uiActions}>
       <div className="app">
         <Routes>
           <Route
@@ -159,16 +230,34 @@ function Shell() {
         />
       ) : null}
 
+      {sheet?.type === 'tx-edit' && editingTx && (editingTx.kind === 'expense' || editingTx.kind === 'income') ? (
+        <QuickEntrySheet
+          initialKind={editingTx.kind}
+          transaction={editingTx}
+          totalBalance={totalBalance}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
+
       {sheet?.type === 'account' ? (
         <AccountFormSheet account={editingAccount} totalBalance={totalBalance} onClose={() => setSheet(null)} />
       ) : null}
 
       {sheet?.type === 'transfer' ? (
-        <TransferSheet presetFromId={sheet.fromId} totalBalance={totalBalance} onClose={() => setSheet(null)} />
+        <TransferSheet
+          presetFromId={sheet.fromId}
+          transferId={sheet.transferId}
+          totalBalance={totalBalance}
+          onClose={() => setSheet(null)}
+        />
       ) : null}
 
       {sheet?.type === 'installment-plan' ? (
         <InstallmentPlanSheet plan={editingPlan} onClose={() => setSheet(null)} />
+      ) : null}
+
+      {sheet?.type === 'installment-item' && editingItem ? (
+        <InstallmentItemSheet item={editingItem} onClose={() => setSheet(null)} />
       ) : null}
 
       {sheet?.type === 'installment-pay' && payingItem && payingPlan ? (
@@ -184,6 +273,15 @@ function Shell() {
       ) : null}
 
       {sheet?.type === 'all-tx' ? <AllTransactionsPage onBack={() => setSheet(null)} /> : null}
+
+      {sheet?.type === 'confirm' ? (
+        <ConfirmSheet
+          title={sheet.title}
+          message={sheet.message}
+          onConfirm={sheet.run}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
 
       {sheet?.type === 'settings' ? (
         <>
@@ -226,6 +324,7 @@ function Shell() {
       ) : null}
 
       {toast ? <Toast message={toast} onDone={() => setToast(null)} /> : null}
+      </UiActionsContext.Provider>
     </PhoneShell>
   )
 }

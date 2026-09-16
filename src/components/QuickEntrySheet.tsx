@@ -1,38 +1,56 @@
 import { useMemo, useRef, useState } from 'react'
 import { categoriesFor, getCategory } from '../lib/categories'
+import { todayIso } from '../lib/iso'
 import { formatRial, parseRialInput } from '../lib/money'
 import { useStore } from '../store/Store'
+import { DateField } from './DateField'
 import { PickerSheet } from './PickerSheet'
-import type { Account } from '../types'
+import type { Account, Transaction } from '../types'
 
 export function QuickEntrySheet({
   initialKind = 'expense',
   presetAccountId,
   totalBalance,
+  transaction,
   onClose,
 }: {
   initialKind?: 'expense' | 'income'
   presetAccountId?: string
   totalBalance: number
+  transaction?: Transaction
   onClose: () => void
 }) {
-  const { activeAccounts, addQuickEntry } = useStore()
-  const [kind, setKind] = useState<'expense' | 'income'>(initialKind)
-  const [amountRaw, setAmountRaw] = useState('')
-  const [accountId, setAccountId] = useState(presetAccountId ?? activeAccounts[0]?.id ?? '')
-  const [categoryId, setCategoryId] = useState(() => categoriesFor(initialKind)[0]?.id ?? 'food')
-  const [note, setNote] = useState('')
+  const { activeAccounts, addQuickEntry, updateTransaction } = useStore()
+  const isEdit = Boolean(transaction)
+  const [kind, setKind] = useState<'expense' | 'income'>(
+    transaction?.kind === 'income' ? 'income' : transaction?.kind === 'expense' ? 'expense' : initialKind,
+  )
+  const [amountRaw, setAmountRaw] = useState(transaction ? String(transaction.amount) : '')
+  const [accountId, setAccountId] = useState(transaction?.accountId ?? presetAccountId ?? activeAccounts[0]?.id ?? '')
+  const [categoryId, setCategoryId] = useState(
+    () => transaction?.categoryId ?? categoriesFor(initialKind)[0]?.id ?? 'food',
+  )
+  const [note, setNote] = useState(transaction?.note ?? '')
+  const [date, setDate] = useState(transaction?.date ?? todayIso())
   const [picker, setPicker] = useState<'category' | 'account' | 'note' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const amountRef = useRef<HTMLInputElement>(null)
+  const linked = Boolean(transaction?.installmentItemId)
 
   const cats = useMemo(() => categoriesFor(kind), [kind])
   const category = getCategory(categoryId) ?? cats[0]
   const account = activeAccounts.find((a) => a.id === accountId)
   const amount = parseRialInput(amountRaw)
+  const available =
+    account && kind === 'expense'
+      ? account.balance + (transaction?.kind === 'expense' && transaction.accountId === account.id ? transaction.amount : 0)
+      : Infinity
+  const over = kind === 'expense' && amount > 0 && amount > available
+  const disabled = saving || amount <= 0 || over || !account
 
   function switchKind(next: 'expense' | 'income') {
+    if (linked) return
     setKind(next)
     const nextCats = categoriesFor(next)
     if (!nextCats.some((c) => c.id === categoryId)) {
@@ -48,13 +66,25 @@ export function QuickEntrySheet({
     }
     setSaving(true)
     try {
-      await addQuickEntry({
-        kind,
-        amount,
-        accountId: account.id,
-        categoryId: category?.id ?? cats[0].id,
-        note,
-      })
+      if (transaction) {
+        await updateTransaction(transaction.id, {
+          kind,
+          amount,
+          accountId: account.id,
+          categoryId: category?.id ?? cats[0].id,
+          note,
+          date,
+        })
+      } else {
+        await addQuickEntry({
+          kind,
+          amount,
+          accountId: account.id,
+          categoryId: category?.id ?? cats[0].id,
+          note,
+          date,
+        })
+      }
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ثبت نشد')
@@ -117,7 +147,7 @@ export function QuickEntrySheet({
       <div className="glass-sheet" role="dialog" aria-label="ثبت سریع">
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <h1>ثبت سریع</h1>
+          <h1>{isEdit ? 'ویرایش تراکنش' : 'ثبت سریع'}</h1>
           <button className="sheet-close" type="button" onClick={onClose} aria-label="بستن">
             ✕
           </button>
@@ -163,21 +193,21 @@ export function QuickEntrySheet({
           />
         </div>
 
-        {error ? (
+        {error || over ? (
           <div className="banner error">
             <span className="bico">⚠</span>
-            <span>{error}</span>
+            <span>{error || 'موجودی حساب کافی نیست'}</span>
           </div>
         ) : null}
 
         <div className="field-stack">
-          <button className="field-chip" type="button" onClick={() => setPicker('category')}>
+          <button className="field-chip" type="button" onClick={() => !linked && setPicker('category')} disabled={linked}>
             <span className="ficon">{category?.icon ?? '📂'}</span>
             <div>
               <div className="flabel">دسته‌بندی</div>
               <div className="fvalue">{category?.name ?? 'انتخاب کنید'}</div>
             </div>
-            <span className="fchev">‹</span>
+            {linked ? <span className="readonly-tag">قفل</span> : <span className="fchev">‹</span>}
           </button>
           <button className="field-chip" type="button" onClick={() => setPicker('account')}>
             <span className="ficon">💳</span>
@@ -189,6 +219,7 @@ export function QuickEntrySheet({
             </div>
             <span className="fchev">‹</span>
           </button>
+          <DateField label="تاریخ" value={date} onChange={setDate} />
           <button className="field-chip" type="button" onClick={() => setPicker(picker === 'note' ? null : 'note')}>
             <span className="ficon">📝</span>
             <div style={{ flex: 1 }}>
@@ -210,8 +241,8 @@ export function QuickEntrySheet({
           </button>
         </div>
 
-        <button className="cta-confirm" type="button" onClick={() => void submit()} disabled={saving}>
-          {saving ? 'در حال ثبت…' : 'تأیید و ثبت'}
+        <button className={`cta-confirm${disabled ? ' disabled' : ''}`} type="button" onClick={() => void submit()} disabled={disabled}>
+          {saving ? 'در حال ثبت…' : isEdit ? 'ذخیره تغییرات' : 'تأیید و ثبت'}
         </button>
       </div>
     </>

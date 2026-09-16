@@ -4,6 +4,8 @@ import { paidCount, planBadge } from '../lib/installments'
 import { todayIso } from '../lib/iso'
 import { formatRial, toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
+import { SwipeRow } from '../components/SwipeRow'
+import { useUiActions } from '../components/UiActions'
 import type { InstallmentItem, InstallmentPlan, PlanBadge } from '../types'
 
 const BADGE_LABEL: Record<PlanBadge, string> = {
@@ -133,6 +135,7 @@ function PlanCard({
   today: string
   onClick: () => void
 }) {
+  const actions = useUiActions()
   const paid = paidCount(items, today)
   const badge = plan.status === 'completed' ? 'ok' : planBadge(items, today)
   const next = items
@@ -141,7 +144,11 @@ function PlanCard({
   const percent = plan.totalCount > 0 ? Math.round((paid / plan.totalCount) * 100) : 0
 
   return (
-    <button className="plan-card lg-light" type="button" onClick={onClick}>
+    <SwipeRow
+      onEdit={actions ? () => actions.editPlan(plan.id) : undefined}
+      onDelete={actions ? () => actions.deletePlan(plan.id) : undefined}
+    >
+      <button className="plan-card lg-row" type="button" onClick={onClick}>
       <div className="plan-top">
         <div>
           <div className="plan-name">{plan.name}</div>
@@ -175,5 +182,6 @@ function PlanCard({
         <span>مانده: {toFaDigits(Math.max(plan.totalCount - paid, 0))}</span>
       </div>
     </button>
+    </SwipeRow>
   )
 }
