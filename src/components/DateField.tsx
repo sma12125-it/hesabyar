@@ -1,5 +1,7 @@
-import { useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { formatPersianDateFull } from '../lib/dates'
+import { JalaliCalendarSheet } from './JalaliCalendarSheet'
 
 export function DateField({
   label,
@@ -12,39 +14,50 @@ export function DateField({
   onChange: (iso: string) => void
   readOnly?: boolean
 }) {
-  const ref = useRef<HTMLInputElement>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(false)
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null)
+
+  useLayoutEffect(() => {
+    const host = btnRef.current?.closest('.device-screen')
+    setPortalRoot((host as HTMLElement | null) ?? document.body)
+  }, [])
 
   return (
-    <button
-      className={`field-chip${readOnly ? ' chip-readonly' : ''}`}
-      type="button"
-      disabled={readOnly}
-      onClick={() => {
-        if (readOnly) return
-        const input = ref.current
-        if (!input) return
-        const picker = input as HTMLInputElement & { showPicker?: () => void }
-        if (typeof picker.showPicker === 'function') picker.showPicker()
-        else input.click()
-      }}
-    >
-      <span className="ficon">📆</span>
-      <div>
-        <div className="flabel">{label}</div>
-        <div className={value ? 'fvalue' : 'fvalue placeholder-val'}>
-          {value ? formatPersianDateFull(value) : 'انتخاب تاریخ…'}
+    <>
+      <button
+        ref={btnRef}
+        className={`field-chip${readOnly ? ' chip-readonly' : ''}`}
+        type="button"
+        disabled={readOnly}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => {
+          if (!readOnly) setOpen(true)
+        }}
+      >
+        <span className="ficon">📆</span>
+        <div>
+          <div className="flabel">{label}</div>
+          <div className={value ? 'fvalue' : 'fvalue placeholder-val'}>
+            {value ? formatPersianDateFull(value) : 'انتخاب تاریخ…'}
+          </div>
         </div>
-      </div>
-      {readOnly ? <span className="readonly-tag">قفل</span> : <span className="fchev">‹</span>}
-      <input
-        ref={ref}
-        className="date-overlay"
-        type="date"
-        value={value}
-        tabIndex={-1}
-        onChange={(e) => onChange(e.target.value)}
-        onClick={(e) => e.stopPropagation()}
-      />
-    </button>
+        {readOnly ? <span className="readonly-tag">قفل</span> : <span className="fchev">‹</span>}
+      </button>
+      {open && portalRoot
+        ? createPortal(
+            <JalaliCalendarSheet
+              value={value}
+              onSelect={(iso) => {
+                onChange(iso)
+                setOpen(false)
+              }}
+              onClose={() => setOpen(false)}
+            />,
+            portalRoot,
+          )
+        : null}
+    </>
   )
 }
