@@ -118,6 +118,12 @@ button.field-chip {
   color: var(--hy-text-tertiary);
 }
 
+.amount-field {
+  direction: ltr;
+  text-align: right;
+  unicode-bidi: isolate;
+}
+
 .amount-block {
   cursor: text;
   position: relative;
