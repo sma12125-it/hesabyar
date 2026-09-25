@@ -8,11 +8,20 @@ function useFullBleedClass() {
     const apply = () => {
       const full = query.matches || nav.standalone === true
       document.documentElement.classList.toggle('hy-fullbleed', full)
+      const viewport = window.visualViewport
+      const height = viewport?.height ?? window.innerHeight
+      document.documentElement.style.setProperty('--hy-vh', `${Math.round(height)}px`)
     }
     apply()
     query.addEventListener('change', apply)
+    window.addEventListener('resize', apply)
+    window.visualViewport?.addEventListener('resize', apply)
+    window.visualViewport?.addEventListener('scroll', apply)
     return () => {
       query.removeEventListener('change', apply)
+      window.removeEventListener('resize', apply)
+      window.visualViewport?.removeEventListener('resize', apply)
+      window.visualViewport?.removeEventListener('scroll', apply)
       document.documentElement.classList.remove('hy-fullbleed')
     }
   }, [])
