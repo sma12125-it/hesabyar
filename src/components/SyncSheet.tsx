@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { loadSession, pullSnapshot, pushSnapshot, saveSession, signIn, signUp, supabaseConfig, type CloudSession } from '../lib/sync'
+import { loadSession, pullSnapshot, pushSnapshot, saveSession, saveSupabaseConfig, signIn, signUp, supabaseConfig, type CloudSession } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 import { useStore } from '../store/Store'
 
@@ -24,7 +24,10 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
   const [session, setSession] = useState<CloudSession | null>(() => loadSession())
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
-  const configured = Boolean(supabaseConfig())
+  const active = supabaseConfig()
+  const [url, setUrl] = useState(active?.url ?? '')
+  const [key, setKey] = useState(active?.key ?? '')
+  const [configured, setConfigured] = useState(() => Boolean(supabaseConfig()))
 
   async function payload(): Promise<Payload> {
     const local = await extras.exportLocal()
@@ -97,16 +100,28 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
       <div className="glass-sheet" role="dialog" aria-label="همگام‌سازی ابری">
         <div className="sheet-handle" />
         <div className="sheet-header">
-          <h1>همگام‌سازی ابری</h1>
+          <h1>اتصال ابری</h1>
           <button className="sheet-close" type="button" onClick={onClose} aria-label="بستن">✕</button>
         </div>
+        <p className="sheet-sub">جدول snapshots ساخته شده است. Project URL و کلید Publishable را بگذارید. کلید Secret را وارد نکنید. کارت‌ها فقط رمزشده ارسال می‌شوند.</p>
+        <div className="field-stack">
+          <input className="field-input" placeholder="https://yiluruldxtgfuxqwosri.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <input className="field-input" placeholder="sb_publishable_..." value={key} onChange={(e) => setKey(e.target.value)} />
+          <button className="cat-mini" type="button" onClick={() => {
+            saveSupabaseConfig(url, key)
+            const ok = Boolean(supabaseConfig())
+            setConfigured(ok)
+            setError(ok ? null : 'نشانی و کلید Publishable را کامل وارد کنید')
+            setInfo(ok ? 'نشانی و کلید ذخیره شد' : null)
+          }}>ذخیره اتصال</button>
+        </div>
+        {error ? <div className="banner error"><span>{error}</span></div> : null}
+        {info ? <p className="sheet-sub">{info}</p> : null}
         {!configured ? (
-          <p className="sheet-sub">VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY را در env بگذارید و schema فایل supabase/schema.sql را اجرا کنید. تا آن موقع داده فقط روی همین دستگاه می‌ماند. کارت‌ها فقط به‌صورت رمزشده ارسال می‌شوند.</p>
+          <p className="sheet-sub">تا ذخیرهٔ این دو مقدار، داده فقط روی همین دستگاه می‌ماند.</p>
         ) : (
           <>
             <p className="sheet-sub">{session ? `متصل: ${session.email}` : 'با ایمیل وارد شوید. آخرین نوشتن برنده است.'}</p>
-            {error ? <div className="banner error"><span>{error}</span></div> : null}
-            {info ? <p className="sheet-sub">{info}</p> : null}
             {!session ? (
               <div className="field-stack">
                 <input className="field-input" type="email" placeholder="ایمیل" value={email} onChange={(e) => setEmail(e.target.value)} />

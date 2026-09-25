@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { copyFileSync, existsSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const sourceHtml = resolve(__dirname, 'index.source.html')
@@ -36,6 +36,25 @@ export default defineConfig({
         if (existsSync(generated)) copyFileSync(generated, index)
         copyFileSync(index, resolve(dist, '404.html'))
         writeFileSync(resolve(dist, '.nojekyll'), '')
+        const files: string[] = []
+        const walk = (dir: string, prefix: string) => {
+          for (const name of readdirSync(dir)) {
+            const abs = resolve(dir, name)
+            const rel = prefix ? `${prefix}/${name}` : name
+            if (statSync(abs).isDirectory()) walk(abs, rel)
+            else if (name !== 'sw.js') files.push(`/hesabyar/${rel.replace(/\\/g, '/')}`)
+          }
+        }
+        walk(dist, '')
+        const cache = `hy-${Date.now()}`
+        writeFileSync(
+          resolve(dist, 'sw.js'),
+          `const CACHE=${JSON.stringify(cache)};const ASSETS=${JSON.stringify(['/hesabyar/', ...files])};
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(res=>{const copy=res.clone();caches.open(CACHE).then(c=>c.put(e.request,copy)).catch(()=>{});return res}).catch(()=>caches.match(e.request).then(hit=>hit||caches.match('/hesabyar/index.html'))))});
+`,
+        )
       },
     },
   ],
