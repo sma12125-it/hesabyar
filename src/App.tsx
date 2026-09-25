@@ -25,7 +25,8 @@ import { InstallmentsPage } from './pages/InstallmentsPage'
 import { InstallmentDetailPage } from './pages/InstallmentDetailPage'
 import { remainingAmount } from './lib/installments'
 import { todayIso } from './lib/iso'
-import { ExtrasProvider } from './store/Extras'
+import { LiveSync } from './components/LiveSync'
+import { ExtrasProvider, useExtras } from './store/Extras'
 import { StoreProvider, useStore } from './store/Store'
 
 export type Sheet =
@@ -45,6 +46,7 @@ export type Sheet =
 function Shell() {
   const location = useLocation()
   const { ready, error, totalBalance, accounts, transactions, plans, items, resetDemo, wipeAll, deleteTransaction, deleteAccount, deleteInstallmentPlan, deleteInstallmentItem } = useStore()
+  const { unlocked: vaultOpen } = useExtras()
   const [compact, setCompact] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [sheet, setSheet] = useState<Sheet | null>(null)
@@ -151,6 +153,7 @@ function Shell() {
 
   return (
     <PhoneShell>
+      <LiveSync />
       <UiActionsContext.Provider value={uiActions}>
       <div className="app">
         <Routes>
@@ -207,10 +210,19 @@ function Shell() {
           </button>
         ) : null}
 
-        {!sheetOpen && isAccountsList && hasVisibleAccounts ? (
-          <button className="fab-pill" type="button" onClick={() => setSheet({ type: 'account' })}>
-            <span>＋</span> حساب جدید
-          </button>
+        {!sheetOpen && isAccountsList && (hasVisibleAccounts || vaultOpen) ? (
+          <div className="fab-row">
+            {vaultOpen ? (
+              <button className="fab-pill" type="button" onClick={() => window.dispatchEvent(new Event('hy-new-card'))}>
+                <span>＋</span> ساخت کارت
+              </button>
+            ) : null}
+            {hasVisibleAccounts ? (
+              <button className="fab-pill" type="button" onClick={() => setSheet({ type: 'account' })}>
+                <span>＋</span> حساب جدید
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {!sheetOpen && isInstallmentsList && hasPlans ? (

@@ -17,3 +17,12 @@ create policy "own snapshot"
 revoke all on table public.snapshots from anon;
 grant select, insert, update, delete on table public.snapshots to authenticated;
 grant all on table public.snapshots to service_role;
+
+alter table public.snapshots replica identity full;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.snapshots;
+exception
+  when duplicate_object then null;
+end $$;
