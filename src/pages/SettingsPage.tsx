@@ -31,7 +31,7 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
       <button className="settings-row lg" type="button" onClick={() => setPopup('cloud')}>
         <span>
           <strong>اتصال ابری</strong>
-          <small>کلید پروژه، ورود با ایمیل، و فرستادن یا گرفتن داده‌ها.</small>
+          <small>ساخت حساب، ورود، و فرستادن یا گرفتن داده‌ها.</small>
         </span>
         <span className="fchev">‹</span>
       </button>

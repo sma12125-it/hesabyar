@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { loadSession, pullSnapshot, pushSnapshot, saveSession, saveSupabaseConfig, signIn, signUp, supabaseConfig, type CloudSession } from '../lib/sync'
+import { loadSession, pullSnapshot, pushSnapshot, saveSession, signIn, signUp, type CloudSession } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 import { useStore } from '../store/Store'
 
@@ -24,10 +24,6 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
   const [session, setSession] = useState<CloudSession | null>(() => loadSession())
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
-  const active = supabaseConfig()
-  const [url, setUrl] = useState(active?.url ?? '')
-  const [key, setKey] = useState(active?.key ?? '')
-  const [configured, setConfigured] = useState(() => Boolean(supabaseConfig()))
 
   async function payload(): Promise<Payload> {
     const local = await extras.exportLocal()
@@ -103,25 +99,10 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
           <h1>اتصال ابری</h1>
           <button className="sheet-close" type="button" onClick={onClose} aria-label="بستن">✕</button>
         </div>
-        <p className="sheet-sub">جدول snapshots ساخته شده است. Project URL و کلید Publishable را بگذارید. کلید Secret را وارد نکنید. کارت‌ها فقط رمزشده ارسال می‌شوند.</p>
-        <div className="field-stack">
-          <input className="field-input" placeholder="https://yiluruldxtgfuxqwosri.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} />
-          <input className="field-input" placeholder="sb_publishable_..." value={key} onChange={(e) => setKey(e.target.value)} />
-          <button className="cat-mini" type="button" onClick={() => {
-            saveSupabaseConfig(url, key)
-            const ok = Boolean(supabaseConfig())
-            setConfigured(ok)
-            setError(ok ? null : 'نشانی و کلید Publishable را کامل وارد کنید')
-            setInfo(ok ? 'نشانی و کلید ذخیره شد' : null)
-          }}>ذخیره اتصال</button>
-        </div>
+        <p className="sheet-sub">اتصال آماده است. با ایمیل خود حساب بسازید. فقط همان حساب به دادهٔ آنلاین دسترسی دارد و کارت‌ها رمزشده می‌روند.</p>
         {error ? <div className="banner error"><span>{error}</span></div> : null}
         {info ? <p className="sheet-sub">{info}</p> : null}
-        {!configured ? (
-          <p className="sheet-sub">تا ذخیرهٔ این دو مقدار، داده فقط روی همین دستگاه می‌ماند.</p>
-        ) : (
-          <>
-            <p className="sheet-sub">{session ? `متصل: ${session.email}` : 'با ایمیل وارد شوید. آخرین نوشتن برنده است.'}</p>
+        <p className="sheet-sub">{session ? `متصل: ${session.email}` : 'با ایمیل وارد شوید. آخرین نوشتن برنده است.'}</p>
             {!session ? (
               <div className="field-stack">
                 <input className="field-input" type="email" placeholder="ایمیل" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -136,8 +117,6 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
                 <button className="cat-mini danger" type="button" onClick={() => { saveSession(null); setSession(null) }}>خروج</button>
               </div>
             )}
-          </>
-        )}
       </div>
     </>
   )
