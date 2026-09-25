@@ -1,6 +1,12 @@
 import { maskPan } from '../lib/vault'
 import type { BankCard } from '../types'
 
+export function formatExpiry(expiry: string): string {
+  const [month, year] = expiry.split('/')
+  if (!month || !year) return expiry
+  return `${year}   ${month}`
+}
+
 export function formatPan(pan: string, revealed: boolean): string {
   const digits = pan.replace(/\D/g, '')
   const shown = revealed ? digits : maskPan(digits).replace('•••• ', '')
@@ -22,9 +28,9 @@ export function BankCardFace({ card, revealed = false }: { card: BankCard; revea
           <small>صاحب کارت</small>
           {card.holder}
         </span>
-        <span>
+        <span className="plastic-expiry" dir="ltr">
           <small>انقضا</small>
-          {card.expiry}
+          {formatExpiry(card.expiry)}
         </span>
         <span>
           <small>CVV</small>

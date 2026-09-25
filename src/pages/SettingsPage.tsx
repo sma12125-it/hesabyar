@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { PatternLock } from '../components/PatternLock'
 import { SyncSheet } from '../components/SyncSheet'
 import { loadLock, registerBiometric, setPattern, setPin, type AppLockRecord } from '../lib/applock'
+import { useExtras } from '../store/Extras'
 
-type Popup = 'cloud' | 'security' | null
+type Popup = 'cloud' | 'security' | 'vault' | null
 
 export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => void }) {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light')
@@ -35,6 +36,13 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
         </span>
         <span className="fchev">‹</span>
       </button>
+      <button className="settings-row lg" type="button" onClick={() => setPopup('vault')}>
+        <span>
+          <strong>گاوصندوق کارت</strong>
+          <small>رمز گاوصندوق اینجا تعیین می‌شود و قفل کارت‌ها با همان رمز باز می‌شود.</small>
+        </span>
+        <span className="fchev">‹</span>
+      </button>
       <button className="settings-row lg" type="button" onClick={() => setPopup('security')}>
         <span>
           <strong>امنیت ورود</strong>
@@ -44,6 +52,7 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
       </button>
       {popup === 'cloud' ? <SyncSheet onClose={() => setPopup(null)} /> : null}
       {popup === 'security' ? <SecurityPopup onClose={() => setPopup(null)} /> : null}
+      {popup === 'vault' ? <VaultPopup onClose={() => setPopup(null)} /> : null}
     </div>
   )
 }
@@ -84,6 +93,64 @@ function SecurityPopup({ onClose }: { onClose: () => void }) {
             {lock.patternHash ? 'الگو روشن است. ' : ''}
             {lock.credentialId ? 'قفل گوشی روشن است.' : ''}
           </p>
+          {info ? <p className="sheet-sub">{info}</p> : null}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function VaultPopup({ onClose }: { onClose: () => void }) {
+  const { vaultConfigured, setVaultPassword, changeVaultPassword } = useExtras()
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [again, setAgain] = useState('')
+  const [info, setInfo] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function save() {
+    setError(null)
+    setInfo(null)
+    if (next.length < 4) {
+      setError('رمز حداقل ۴ حرف است')
+      return
+    }
+    if (next !== again) {
+      setError('تکرار رمز یکسان نیست')
+      return
+    }
+    try {
+      if (vaultConfigured) await changeVaultPassword(current, next)
+      else await setVaultPassword(next)
+      setInfo(vaultConfigured ? 'رمز گاوصندوق عوض شد' : 'رمز گاوصندوق تعیین شد')
+      setCurrent('')
+      setNext('')
+      setAgain('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'رمز ذخیره نشد')
+    }
+  }
+
+  return (
+    <>
+      <div className="sheet-scrim" onClick={onClose} />
+      <div className="glass-sheet" role="dialog" aria-label="گاوصندوق کارت">
+        <div className="sheet-handle" />
+        <div className="sheet-header">
+          <h1>گاوصندوق کارت</h1>
+          <button className="sheet-close" type="button" onClick={onClose} aria-label="بستن">✕</button>
+        </div>
+        <div className="sheet-body-scroll">
+          <p className="sheet-sub">
+            {vaultConfigured
+              ? 'رمز فعلی و رمز تازه را بنویسید. کارت‌ها با رمز تازه دوباره قفل می‌شوند.'
+              : 'یک رمز برای گاوصندوق بگذارید. باز کردن کارت‌ها فقط با همین رمز ممکن است.'}
+          </p>
+          {vaultConfigured ? <input className="field-input" type="password" placeholder="رمز فعلی" value={current} onChange={(e) => setCurrent(e.target.value)} /> : null}
+          <input className="field-input" type="password" placeholder="رمز گاوصندوق" value={next} onChange={(e) => setNext(e.target.value)} />
+          <input className="field-input" type="password" placeholder="تکرار رمز" value={again} onChange={(e) => setAgain(e.target.value)} />
+          <button className="cta-confirm" type="button" onClick={() => void save()}>ثبت رمز</button>
+          {error ? <div className="banner error"><span>{error}</span></div> : null}
           {info ? <p className="sheet-sub">{info}</p> : null}
         </div>
       </div>

@@ -762,6 +762,10 @@ body,
 .plastic-brand { font-size: 12px; opacity: .8; }
 .plastic-chip { width: 42px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #f8e7b0, #c9a227); }
 .plastic-pan { font-size: 20px; letter-spacing: 2px; font-weight: 700; direction: ltr; text-align: left; }
+.plastic-expiry { direction: ltr; text-align: left; letter-spacing: 1px; }
+.fab-row { position: absolute; bottom: calc(var(--tab-bottom-gap, 18px) + 72px); left: 50%; transform: translateX(-50%); z-index: 35; display: flex; gap: 8px; }
+.fab-row .fab-pill { position: static; transform: none; }
+.head-actions { display: none; gap: 8px; }
 .plastic-bottom small { display: block; font-size: 10px; opacity: .75; }
 .card-gallery, .card-pick { display: flex; flex-direction: column; gap: 10px; }
 .card-pick { border: 0; background: transparent; padding: 0; text-align: right; }
@@ -821,6 +825,7 @@ html[data-theme='dark'] .wallpaper {
     border-radius: 14px;
   }
 
+  .head-actions { display: flex; }
   .head-action {
     display: inline-flex;
     align-items: center;
@@ -835,7 +840,7 @@ html[data-theme='dark'] .wallpaper {
     font-weight: 700;
   }
 
-  .fab-pill { display: none; }
+  .fab-row { display: none; }
 
   .mic-fab {
     top: auto;

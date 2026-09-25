@@ -1,6 +1,9 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
+import { useExtras } from '../store/Extras'
+import { CardFormSheet } from '../components/CardFormSheet'
 import { CardVaultSection } from '../components/CardVaultSection'
 import { AccountRow } from '../components/TxRow'
 import { BalanceHero } from '../components/BalanceHero'
@@ -13,7 +16,14 @@ export function AccountsPage({
   onCreate: () => void
 }) {
   const { accounts, activeAccounts, totalBalance } = useStore()
+  const { unlocked, cards } = useExtras()
+  const [cardId, setCardId] = useState<string | null | undefined>(undefined)
   const navigate = useNavigate()
+  useEffect(() => {
+    const open = () => setCardId(null)
+    window.addEventListener('hy-new-card', open)
+    return () => window.removeEventListener('hy-new-card', open)
+  }, [])
   const visible = accounts.filter((a) => !a.archived)
   const archived = accounts.filter((a) => a.archived)
 
@@ -21,7 +31,10 @@ export function AccountsPage({
     <div className="app-scroll" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
       <div className="top-row">
         <h1>حساب‌ها</h1>
-        <button className="head-action" type="button" onClick={onCreate}>حساب جدید</button>
+        <span className="head-actions">
+          {unlocked ? <button className="head-action" type="button" onClick={() => setCardId(null)}>ساخت کارت</button> : null}
+          <button className="head-action" type="button" onClick={onCreate}>حساب جدید</button>
+        </span>
       </div>
 
       {visible.length === 0 && archived.length === 0 ? (
@@ -34,7 +47,7 @@ export function AccountsPage({
             ＋ ساخت حساب جدید
           </button>
         </div>
-        <CardVaultSection />
+        <CardVaultSection onEdit={(id) => setCardId(id)} />
         </>
       ) : (
         <>
@@ -76,10 +89,13 @@ export function AccountsPage({
             </>
           ) : null}
           </div>
-          <CardVaultSection />
+          <CardVaultSection onEdit={(id) => setCardId(id)} />
           </div>
         </>
       )}
+      {cardId !== undefined ? (
+        <CardFormSheet card={cards.find((card) => card.id === cardId)} onClose={() => setCardId(undefined)} />
+      ) : null}
     </div>
   )
 }
