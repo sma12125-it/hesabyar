@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { formatRial, validateAccountName } from '../lib/money'
+import { useExtras } from '../store/Extras'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
-import type { Account, AccountType } from '../types'
+import { BankCardFace } from './BankCardFace'
+import type { Account, AccountType, BankCard } from '../types'
 
 export function AccountFormSheet({
   account,
@@ -14,6 +16,10 @@ export function AccountFormSheet({
   onClose: () => void
 }) {
   const { createAccount, updateAccount } = useStore()
+  const { unlocked, cards, unlockVault, linkCard } = useExtras()
+  const [source, setSource] = useState<'pick' | 'fresh'>(account ? 'fresh' : 'pick')
+  const [phrase, setPhrase] = useState('')
+  const [picked, setPicked] = useState<BankCard | null>(null)
   const [name, setName] = useState(account?.name ?? '')
   const [type, setType] = useState<AccountType>(account?.type ?? 'cash')
   const [initialBalance, setInitialBalance] = useState(0)
@@ -34,11 +40,13 @@ export function AccountFormSheet({
       if (isEdit && account) {
         await updateAccount(account.id, { name, type })
       } else {
-        await createAccount({
-          name,
-          type,
+        const created = await createAccount({
+          name: picked ? `${picked.bankName} ${picked.pan.slice(-4)}` : name,
+          type: picked ? 'bank' : type,
           initialBalance,
+          cardId: picked?.id,
         })
+        if (picked) await linkCard(picked.id, created.id)
       }
       onClose()
     } catch (err) {
@@ -70,6 +78,27 @@ export function AccountFormSheet({
               <span>{error}</span>
             </div>
           ) : null}
+          {!isEdit && source === 'pick' ? (
+            <div className="field-stack">
+              <p className="sheet-sub">از کارت یا حساب تعریف‌شده استفاده کن، یا یک حساب تازه با عنوان جدید بساز.</p>
+              {!unlocked ? (
+                <div className="field-chip">
+                  <input className="field-input" type="password" placeholder="رمز گاوصندوق برای دیدن کارت‌ها" value={phrase} onChange={(e) => setPhrase(e.target.value)} />
+                  <button className="cat-mini" type="button" onClick={() => void unlockVault(phrase).catch(() => setError('رمز گاوصندوق نادرست است'))}>باز کردن</button>
+                </div>
+              ) : cards.filter((card) => !card.accountId).length === 0 ? (
+                <p className="sheet-sub">کارت آزادی برای اتصال نیست.</p>
+              ) : (
+                cards.filter((card) => !card.accountId).map((card) => (
+                  <button key={card.id} className="card-pick" type="button" onClick={() => { setPicked(card); setSource('fresh'); setType('bank'); setName(`${card.bankName} ${card.pan.slice(-4)}`) }}>
+                    <BankCardFace card={card} />
+                  </button>
+                ))
+              )}
+              <button className="cta-confirm" type="button" onClick={() => { setPicked(null); setSource('fresh') }}>حساب تازه با عنوان جدید</button>
+            </div>
+          ) : null}
+          {isEdit || source === 'fresh' ? (
           <div className="field-stack">
             <div className={`field-chip${error && nameError ? ' invalid' : ''}`}>
               <span className="ficon">✏️</span>
@@ -125,6 +154,8 @@ export function AccountFormSheet({
               </div>
             ) : null}
           </div>
+          ) : null}
+          {isEdit || source === 'fresh' ? (
           <button
             className={`cta-confirm${canSave ? '' : ' disabled'}`}
             type="button"
@@ -134,6 +165,7 @@ export function AccountFormSheet({
           >
             {saving ? 'در حال ذخیره…' : 'ذخیره'}
           </button>
+          ) : null}
         </div>
       </div>
     </>

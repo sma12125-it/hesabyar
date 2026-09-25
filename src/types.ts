@@ -18,6 +18,8 @@ export interface Account {
   balance: number
   createdAt: number
   updatedAt: number
+  /** Vault card this bank account was opened from. */
+  cardId?: string
 }
 
 export interface Transaction {
@@ -76,6 +78,7 @@ export interface CreateAccountInput {
   name: string
   type: AccountType
   initialBalance: number
+  cardId?: string
 }
 
 export interface QuickEntryInput {
@@ -131,4 +134,40 @@ export interface UpdateTransactionInput {
 export interface UpdateInstallmentItemInput {
   amount?: number
   dueDate?: string
+}
+
+export type CardMarket = 'gold' | 'stock' | 'crypto' | 'fund' | 'bank' | 'cash'
+
+export interface BankCard {
+  id: string
+  bankName: string
+  holder: string
+  pan: string
+  expiry: string
+  cvv: string
+  sheba: string
+  note: string
+  createdAt: number
+  accountId?: string
+  /** CSS gradient or solid color chosen from the palette. */
+  color?: string
+}
+
+export interface Budget {
+  id: string
+  categoryId: string
+  monthlyLimit: number
+}
+
+export interface SavingsGoal {
+  id: string
+  name: string
+  target: number
+  saved: number
+  market: CardMarket
+}
+
+export interface ReminderSettings {
+  enabled: boolean
+  leadDays: number
 }

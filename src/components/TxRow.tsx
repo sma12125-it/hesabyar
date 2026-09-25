@@ -1,12 +1,13 @@
 import { memo } from 'react'
 import { formatRelativeFromIso } from '../lib/dates'
 import { accountIcon, getCategory } from '../lib/categories'
+import { useStore } from '../store/Store'
 import { formatRial } from '../lib/money'
 import type { Account, Transaction } from '../types'
 import { SwipeRow } from './SwipeRow'
 import { useUiActions } from './UiActions'
 
-export function txTitle(tx: Transaction, accounts: Account[]): string {
+export function txTitle(tx: Transaction, accounts: Account[], categories: Parameters<typeof getCategory>[1] = []): string {
   if (tx.kind === 'transferOut' || tx.kind === 'transferIn') {
     if (tx.note) return tx.note
     if (tx.kind === 'transferIn') {
@@ -17,12 +18,12 @@ export function txTitle(tx: Transaction, accounts: Account[]): string {
     return to ? `انتقال به ${to.name}` : 'انتقال'
   }
   if (tx.note) return tx.note
-  return getCategory(tx.categoryId)?.name ?? 'تراکنش'
+  return getCategory(tx.categoryId, categories)?.name ?? 'تراکنش'
 }
 
-export function txIcon(tx: Transaction): string {
+export function txIcon(tx: Transaction, categories: Parameters<typeof getCategory>[1] = []): string {
   if (tx.kind === 'transferOut' || tx.kind === 'transferIn') return '⇄'
-  return getCategory(tx.categoryId)?.icon ?? '💳'
+  return getCategory(tx.categoryId, categories)?.icon ?? '💳'
 }
 
 export function isTransferKind(kind: Transaction['kind']): boolean {
@@ -44,6 +45,7 @@ export const TxRow = memo(function TxRow({
   forAccountId?: string
 }) {
   const actions = useUiActions()
+  const { customCategories } = useStore()
   const account = accounts.find((a) => a.id === tx.accountId)
   const amtClass = tx.kind === 'income' ? 'income' : tx.kind === 'expense' ? 'expense' : ''
   const subBits = [formatRelativeFromIso(tx.date)]
@@ -60,9 +62,9 @@ export const TxRow = memo(function TxRow({
       onDelete={actions ? () => actions.deleteTransaction(tx.id) : undefined}
     >
       <div className="tx-row lg-row">
-        <div className="tx-ico">{txIcon(tx)}</div>
+        <div className="tx-ico">{txIcon(tx, customCategories)}</div>
         <div className="tx-meta">
-          <div className="tx-title">{txTitle(tx, accounts)}</div>
+          <div className="tx-title">{txTitle(tx, accounts, customCategories)}</div>
           <div className="tx-sub">{subBits.join(' · ')}</div>
         </div>
         <div className={`tx-amt ${amtClass}`.trim()}>

@@ -12,7 +12,12 @@ import {
   patchToWrites,
   type AppData,
 } from '../lib/cascade'
-import { INSTALLMENT_CATEGORY_ID } from '../lib/categories'
+import {
+  INSTALLMENT_CATEGORY_ID,
+  isProtectedCategory,
+  transactionsAfterCategoryDelete,
+  validateCategoryName,
+} from '../lib/categories'
 import { createId } from '../lib/ids'
 import {
   defaultPayNote,
@@ -29,6 +34,7 @@ import { availableAfterReplacing, validateAccountName, validateAmount, validateE
 import { validateTransfer } from '../lib/transfer'
 import type {
   Account,
+  Category,
   CreateAccountInput,
   CreateInstallmentPlanInput,
   InstallmentItem,
@@ -48,6 +54,7 @@ interface StoreValue {
   transactions: Transaction[]
   plans: InstallmentPlan[]
   items: InstallmentItem[]
+  customCategories: Category[]
   activeAccounts: Account[]
   totalBalance: number
   refresh: () => Promise<void>
@@ -70,6 +77,9 @@ interface StoreValue {
   payInstallment: (itemId: string, accountId: string, note?: string) => Promise<void>
   resetDemo: () => Promise<void>
   wipeAll: () => Promise<void>
+  createCategory: (kind: 'expense' | 'income', name: string) => Promise<Category>
+  renameCategory: (id: string, name: string) => Promise<void>
+  deleteCategory: (id: string) => Promise<void>
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -90,6 +100,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [plans, setPlans] = useState<InstallmentPlan[]>([])
   const [items, setItems] = useState<InstallmentItem[]>([])
+  const [customCategories, setCustomCategories] = useState<Category[]>([])
   const dataRef = useRef<AppData>({ accounts, transactions, plans, items })
   dataRef.current = { accounts, transactions, plans, items }
 
@@ -138,6 +149,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         if (!cancelled) {
           await refresh()
+          const customs = (await db.getKv<Category[]>('customCategories')) ?? []
+          setCustomCategories(customs.filter((c) => !isProtectedCategory(c.id)))
           setReady(true)
         }
       } catch (err) {
@@ -171,6 +184,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       balance: input.initialBalance,
       createdAt: now,
       updatedAt: now,
+      cardId: input.cardId,
     }
     const prev = dataRef.current
     await persistSnapshot(prev, { ...prev, accounts: [...prev.accounts, account] })
@@ -573,8 +587,48 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const wipeAll = useCallback(async () => {
     await db.replaceAllData([], [], [], [])
     await db.setKv('seeded', true)
+    await db.setKv('customCategories', [])
+    setCustomCategories([])
     await refresh()
   }, [refresh])
+
+  const persistCategories = useCallback(async (next: Category[]) => {
+    const clean = next.filter((c) => c.kind !== 'transfer' && !isProtectedCategory(c.id))
+    setCustomCategories(clean)
+    await db.setKv('customCategories', clean)
+  }, [])
+
+  const createCategory = useCallback(async (kind: 'expense' | 'income', name: string) => {
+    const nameError = validateCategoryName(name)
+    if (nameError) throw new Error(nameError)
+    const category: Category = {
+      id: createId('cat'),
+      name: name.trim(),
+      icon: kind === 'expense' ? '🏷️' : '✨',
+      kind,
+    }
+    await persistCategories([...customCategories, category])
+    return category
+  }, [customCategories, persistCategories])
+
+  const renameCategory = useCallback(async (id: string, name: string) => {
+    if (isProtectedCategory(id)) throw new Error('این دسته قابل تغییر نیست')
+    const nameError = validateCategoryName(name)
+    if (nameError) throw new Error(nameError)
+    const current = customCategories.find((c) => c.id === id)
+    if (!current) throw new Error('دسته پیدا نشد')
+    await persistCategories(customCategories.map((c) => (c.id === id ? { ...c, name: name.trim() } : c)))
+  }, [customCategories, persistCategories])
+
+  const deleteCategory = useCallback(async (id: string) => {
+    if (isProtectedCategory(id)) throw new Error('این دسته قابل حذف نیست')
+    const current = customCategories.find((c) => c.id === id)
+    if (!current || current.kind === 'transfer') throw new Error('دسته پیدا نشد')
+    const prev = dataRef.current
+    const nextTransactions = transactionsAfterCategoryDelete(prev.transactions, id, current.kind)
+    await persistSnapshot(prev, { ...prev, transactions: nextTransactions })
+    await persistCategories(customCategories.filter((c) => c.id !== id))
+  }, [customCategories, persistCategories, persistSnapshot])
 
   const value = useMemo<StoreValue>(
     () => ({
@@ -584,6 +638,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       transactions,
       plans,
       items,
+      customCategories,
       activeAccounts,
       totalBalance,
       refresh,
@@ -606,6 +661,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       payInstallment,
       resetDemo,
       wipeAll,
+      createCategory,
+      renameCategory,
+      deleteCategory,
     }),
     [
       ready,
@@ -614,6 +672,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       transactions,
       plans,
       items,
+      customCategories,
       activeAccounts,
       totalBalance,
       refresh,
@@ -636,6 +695,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       payInstallment,
       resetDemo,
       wipeAll,
+      createCategory,
+      renameCategory,
+      deleteCategory,
     ],
   )
 

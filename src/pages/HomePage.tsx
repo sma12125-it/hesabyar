@@ -1,3 +1,4 @@
+import { CloudLamp } from '../components/CloudLamp'
 import { formatRial, toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
 import { BalanceHero } from '../components/BalanceHero'
@@ -20,13 +21,14 @@ interface HomePageProps {
 export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, onSettings }: HomePageProps) {
   const { activeAccounts, totalBalance, transactions, accounts, plans, items } = useStore()
   const navigate = useNavigate()
-  const recent = visibleLedger(transactions).slice(0, 8)
+  const ledger = visibleLedger(transactions)
+  const recent = ledger.slice(0, 2)
   const today = todayIso()
   const hints = homeInstallmentHints(plans, items, today).slice(0, 4)
 
   return (
     <div
-      className="app-scroll"
+      className="app-scroll page-home"
       onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}
     >
       <div className="top-row">
@@ -38,6 +40,7 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
         >
           خانه
         </h1>
+        <CloudLamp />
         <button
           className="icon-btn"
           type="button"
@@ -120,9 +123,11 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
 
       <div className="section-head">
         <h2>تراکنش‌های اخیر</h2>
-        <button className="link" type="button" onClick={onAll}>
-          همه
-        </button>
+        {ledger.length > 0 ? (
+          <button className="link show-all" type="button" onClick={onAll}>
+            نمایش همه
+          </button>
+        ) : null}
       </div>
 
       <div className="tx-list">

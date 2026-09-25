@@ -45,16 +45,22 @@ describe('RTL physical swipe map (finger right = delete, left = edit)', () => {
   })
 
   it('clamps drag to the enabled side only', () => {
-    expect(clampSwipeOffset(200, true, true)).toBe(120)
-    expect(clampSwipeOffset(-200, true, true)).toBe(-120)
+    expect(clampSwipeOffset(200, true, true)).toBe(132)
+    expect(clampSwipeOffset(-200, true, true)).toBe(-132)
     expect(clampSwipeOffset(80, false, true)).toBe(80)
     expect(clampSwipeOffset(-80, false, true)).toBe(0)
     expect(clampSwipeOffset(80, true, false)).toBe(0)
     expect(clampSwipeOffset(-80, true, false)).toBe(-80)
   })
 
+  it('treats a fast short flick as a commit so mobile gestures still fire', () => {
+    expect(releaseSwipe(32, true, true, 0.6)).toEqual({ action: 'delete', holdPx: SWIPE_PEEK_PX })
+    expect(releaseSwipe(-32, true, true, -0.6)).toEqual({ action: 'edit', holdPx: -SWIPE_PEEK_PX })
+    expect(releaseSwipe(32, true, true, 0.1)).toEqual({ action: null, holdPx: 0 })
+  })
+
   it('skips the peek delay when reduced motion is requested', () => {
-    expect(swipeFeedbackMs(false)).toBe(200)
+    expect(swipeFeedbackMs(false)).toBe(220)
     expect(swipeFeedbackMs(true)).toBe(0)
   })
 })

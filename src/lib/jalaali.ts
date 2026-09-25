@@ -215,3 +215,18 @@ export function addJalaliMonths(jy: number, jm: number, delta: number): { jy: nu
   const monthIndex = ((zero % 12) + 12) % 12
   return { jy: year, jm: monthIndex + 1 }
 }
+
+/**
+ * Add Jalali months to an ISO date, keeping the original Jalali day-of-month.
+ * Shorter months clamp to that month's last day only — the anchor day is not shifted.
+ */
+export function addJalaliMonthsIso(iso: string, months: number): string {
+  const j = isoToJalali(iso)
+  if (!j) throw new Error('تاریخ نامعتبر است')
+  const shifted = addJalaliMonths(j.jy, j.jm, months)
+  const length = jalaaliMonthLength(shifted.jy, shifted.jm)
+  const jd = Math.min(j.jd, length)
+  const out = jalaliToIso(shifted.jy, shifted.jm, jd)
+  if (!out) throw new Error('تاریخ نامعتبر است')
+  return out
+}

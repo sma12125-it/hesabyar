@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
-import { categoriesFor, getCategory } from '../lib/categories'
+import { categoriesFor, getCategory, isProtectedCategory } from '../lib/categories'
 import { todayIso } from '../lib/iso'
 import { formatRial } from '../lib/money'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
 import { DateField } from './DateField'
 import { PickerSheet } from './PickerSheet'
-import type { Account, Transaction } from '../types'
+import type { Account, Category, Transaction } from '../types'
 
 export function QuickEntrySheet({
   initialKind = 'expense',
@@ -21,7 +21,7 @@ export function QuickEntrySheet({
   transaction?: Transaction
   onClose: () => void
 }) {
-  const { activeAccounts, addQuickEntry, updateTransaction } = useStore()
+  const { activeAccounts, addQuickEntry, updateTransaction, customCategories, createCategory, renameCategory, deleteCategory } = useStore()
   const isEdit = Boolean(transaction)
   const [kind, setKind] = useState<'expense' | 'income'>(
     transaction?.kind === 'income' ? 'income' : transaction?.kind === 'expense' ? 'expense' : initialKind,
@@ -38,8 +38,8 @@ export function QuickEntrySheet({
   const [saving, setSaving] = useState(false)
   const linked = Boolean(transaction?.installmentItemId)
 
-  const cats = useMemo(() => categoriesFor(kind), [kind])
-  const category = getCategory(categoryId) ?? cats[0]
+  const cats = useMemo(() => categoriesFor(kind, customCategories), [kind, customCategories])
+  const category = getCategory(categoryId, customCategories) ?? cats[0]
   const account = activeAccounts.find((a) => a.id === accountId)
   const available =
     account && kind === 'expense'
@@ -51,7 +51,7 @@ export function QuickEntrySheet({
   function switchKind(next: 'expense' | 'income') {
     if (linked) return
     setKind(next)
-    const nextCats = categoriesFor(next)
+    const nextCats = categoriesFor(next, customCategories)
     if (!nextCats.some((c) => c.id === categoryId)) {
       setCategoryId(nextCats[0]?.id ?? '')
     }
@@ -94,24 +94,25 @@ export function QuickEntrySheet({
 
   if (picker === 'category') {
     return (
-      <PickerSheet title="دسته‌بندی" onClose={() => setPicker(null)}>
-        {cats.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className="option-item lg-light"
-            onClick={() => {
-              setCategoryId(c.id)
-              setPicker(null)
-            }}
-          >
-            <span className="oico">{c.icon}</span>
-            <div>
-              <div className="otitle">{c.name}</div>
-            </div>
-          </button>
-        ))}
-      </PickerSheet>
+      <CategoryPicker
+        kind={kind}
+        cats={cats}
+        onClose={() => setPicker(null)}
+        onPick={(id) => {
+          setCategoryId(id)
+          setPicker(null)
+        }}
+        onCreate={async (name) => {
+          const created = await createCategory(kind, name)
+          setCategoryId(created.id)
+          setPicker(null)
+        }}
+        onRename={(id, name) => renameCategory(id, name)}
+        onDelete={async (id) => {
+          await deleteCategory(id)
+          if (categoryId === id) setCategoryId(kind === 'expense' ? 'other-exp' : 'other-inc')
+        }}
+      />
     )
   }
 
@@ -236,6 +237,116 @@ export function QuickEntrySheet({
         </button>
       </div>
     </>
+  )
+}
+
+function CategoryPicker({
+  kind,
+  cats,
+  onClose,
+  onPick,
+  onCreate,
+  onRename,
+  onDelete,
+}: {
+  kind: 'expense' | 'income'
+  cats: Category[]
+  onClose: () => void
+  onPick: (id: string) => void
+  onCreate: (name: string) => Promise<void>
+  onRename: (id: string, name: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+}) {
+  const [draft, setDraft] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  async function add() {
+    setError(null)
+    try {
+      await onCreate(draft)
+      setDraft('')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'دسته ساخته نشد')
+    }
+  }
+
+  return (
+    <PickerSheet title="دسته‌بندی" onClose={onClose}>
+      {error ? <p className="sheet-sub">{error}</p> : null}
+      {cats.map((c) => {
+        const custom = !isProtectedCategory(c.id)
+        return (
+          <div key={c.id} className="option-item lg-light cat-option">
+            <button type="button" className="cat-pick" onClick={() => onPick(c.id)}>
+              <span className="oico">{c.icon}</span>
+              {editingId === c.id ? (
+                <input
+                  className="field-input"
+                  value={editName}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void onRename(c.id, editName).then(() => setEditingId(null)).catch((err) => {
+                        setError(err instanceof Error ? err.message : 'نام ذخیره نشد')
+                      })
+                    }
+                  }}
+                />
+              ) : (
+                <div className="otitle">{c.name}</div>
+              )}
+            </button>
+            {custom ? (
+              <span className="cat-actions">
+                <button
+                  type="button"
+                  className="cat-mini"
+                  onClick={() => {
+                    setEditingId(c.id)
+                    setEditName(c.name)
+                  }}
+                >
+                  ویرایش
+                </button>
+                <button
+                  type="button"
+                  className="cat-mini danger"
+                  onClick={() => {
+                    void onDelete(c.id).catch((err) => {
+                      setError(err instanceof Error ? err.message : 'حذف نشد')
+                    })
+                  }}
+                >
+                  حذف
+                </button>
+              </span>
+            ) : null}
+          </div>
+        )
+      })}
+      <div className="cat-add">
+        <input
+          className="field-input"
+          placeholder={kind === 'expense' ? 'دسته هزینه جدید' : 'دسته درآمد جدید'}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void add()
+            }
+          }}
+        />
+        <button className="cat-mini" type="button" onClick={() => void add()}>
+          افزودن
+        </button>
+      </div>
+    </PickerSheet>
   )
 }
 
