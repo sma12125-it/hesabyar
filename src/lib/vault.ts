@@ -62,7 +62,7 @@ export function validateCard(input: Pick<BankCard, 'bankName' | 'holder' | 'pan'
   if (!input.holder.trim()) return 'نام صاحب کارت الزامی است'
   const pan = input.pan.replace(/\D/g, '')
   if (pan.length !== 16) return 'شماره کارت باید ۱۶ رقم باشد'
-  if (!/^\d{2}\/\d{2}$/.test(input.expiry.trim())) return 'انقضا را به‌صورت MM/YY وارد کنید'
+  if (!/^\d{2}\/\d{2}$/.test(input.expiry.trim())) return 'تاریخ انقضا نامعتبر است'
   if (!/^\d{3,4}$/.test(input.cvv.trim())) return 'CVV نامعتبر است'
   return null
 }
