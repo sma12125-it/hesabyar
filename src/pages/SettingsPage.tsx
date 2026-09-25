@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PatternLock } from '../components/PatternLock'
+import { SyncSheet } from '../components/SyncSheet'
 import { loadLock, registerBiometric, setPattern, setPin, type AppLockRecord } from '../lib/applock'
-import { loadSupabaseConfig, saveSupabaseConfig } from '../lib/sync'
 
 type Popup = 'cloud' | 'security' | null
 
@@ -31,7 +31,7 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
       <button className="settings-row lg" type="button" onClick={() => setPopup('cloud')}>
         <span>
           <strong>اتصال ابری</strong>
-          <small>نشانی Supabase و کلید عمومی را اینجا بگذارید.</small>
+          <small>کلید پروژه، ورود با ایمیل، و فرستادن یا گرفتن داده‌ها.</small>
         </span>
         <span className="fchev">‹</span>
       </button>
@@ -42,35 +42,9 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
         </span>
         <span className="fchev">‹</span>
       </button>
-      {popup === 'cloud' ? <CloudPopup onClose={() => setPopup(null)} /> : null}
+      {popup === 'cloud' ? <SyncSheet onClose={() => setPopup(null)} /> : null}
       {popup === 'security' ? <SecurityPopup onClose={() => setPopup(null)} /> : null}
     </div>
-  )
-}
-
-function CloudPopup({ onClose }: { onClose: () => void }) {
-  const stored = loadSupabaseConfig()
-  const [url, setUrl] = useState(stored?.url ?? '')
-  const [key, setKey] = useState(stored?.key ?? '')
-  const [info, setInfo] = useState<string | null>(null)
-  return (
-    <>
-      <div className="sheet-scrim" onClick={onClose} />
-      <div className="glass-sheet" role="dialog" aria-label="اتصال ابری">
-        <div className="sheet-handle" />
-        <div className="sheet-header">
-          <h1>اتصال ابری</h1>
-          <button className="sheet-close" type="button" onClick={onClose} aria-label="بستن">✕</button>
-        </div>
-        <p className="sheet-sub">Project URL و کلید anon. کلید service_role را وارد نکنید.</p>
-        <div className="field-stack">
-          <input className="field-input" placeholder="https://xxxx.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} />
-          <input className="field-input" placeholder="anon public key" value={key} onChange={(e) => setKey(e.target.value)} />
-          <button className="cta-confirm" type="button" onClick={() => { saveSupabaseConfig(url, key); setInfo('ذخیره شد') }}>ذخیره</button>
-          {info ? <p className="sheet-sub">{info}</p> : null}
-        </div>
-      </div>
-    </>
   )
 }
 

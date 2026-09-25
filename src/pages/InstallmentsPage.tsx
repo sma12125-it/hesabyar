@@ -53,9 +53,7 @@ export function InstallmentsPage({
       <div className="top-row">
         <h1>اقساط</h1>
         {empty ? <span style={{ width: 40 }} /> : (
-          <button className="icon-btn" type="button" title="جدید" onClick={onCreate}>
-            ＋
-          </button>
+          <button className="head-action" type="button" onClick={onCreate}>برنامه جدید</button>
         )}
       </div>
 

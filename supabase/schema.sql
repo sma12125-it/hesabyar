@@ -6,8 +6,14 @@ create table if not exists public.snapshots (
 
 alter table public.snapshots enable row level security;
 
+drop policy if exists "own snapshot" on public.snapshots;
+
 create policy "own snapshot"
   on public.snapshots
   for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+revoke all on table public.snapshots from anon;
+grant select, insert, update, delete on table public.snapshots to authenticated;
+grant all on table public.snapshots to service_role;

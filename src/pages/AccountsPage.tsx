@@ -21,7 +21,7 @@ export function AccountsPage({
     <div className="app-scroll" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
       <div className="top-row">
         <h1>حساب‌ها</h1>
-        <span style={{ width: 40 }} />
+        <button className="head-action" type="button" onClick={onCreate}>حساب جدید</button>
       </div>
 
       {visible.length === 0 && archived.length === 0 ? (
