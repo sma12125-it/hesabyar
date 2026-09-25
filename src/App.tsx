@@ -14,12 +14,18 @@ import { UiActionsContext, type UiActions } from './components/UiActions'
 import { HomePage } from './pages/HomePage'
 import { AccountsPage } from './pages/AccountsPage'
 import { AccountDetailPage } from './pages/AccountDetailPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
+import { ReportsPage } from './pages/ReportsPage'
+import { SettingsPage } from './pages/SettingsPage'
+import { LockScreen } from './components/LockScreen'
+import { isSessionOpen, lockEnabled } from './lib/applock'
+import { VoiceSheet } from './components/VoiceSheet'
+import { SyncSheet } from './components/SyncSheet'
 import { AllTransactionsPage } from './pages/AllTransactionsPage'
 import { InstallmentsPage } from './pages/InstallmentsPage'
 import { InstallmentDetailPage } from './pages/InstallmentDetailPage'
 import { remainingAmount } from './lib/installments'
 import { todayIso } from './lib/iso'
+import { ExtrasProvider } from './store/Extras'
 import { StoreProvider, useStore } from './store/Store'
 
 export type Sheet =
@@ -32,6 +38,8 @@ export type Sheet =
   | { type: 'tx-edit'; txId: string }
   | { type: 'all-tx' }
   | { type: 'settings' }
+  | { type: 'voice' }
+  | { type: 'sync' }
   | { type: 'confirm'; title: string; message: string; run: () => Promise<void> }
 
 function Shell() {
@@ -182,14 +190,9 @@ function Shell() {
           />
           <Route
             path="/reports"
-            element={
-              <PlaceholderPage
-                title="گزارش"
-                icon="📈"
-                message="گزارش درآمد و هزینه در اسپرینت بعد می‌آید."
-              />
-            }
+            element={<ReportsPage onScroll={onScroll} />}
           />
+          <Route path="/settings" element={<SettingsPage onScroll={onScroll} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 
@@ -198,7 +201,7 @@ function Shell() {
             className="mic-fab"
             type="button"
             title="ورودی صوتی"
-            onClick={() => setToast('ورودی صوتی در اسپرینت بعد')}
+            onClick={() => setSheet({ type: 'voice' })}
           >
             🎤
           </button>
@@ -282,6 +285,9 @@ function Shell() {
           onClose={() => setSheet(null)}
         />
       ) : null}
+
+      {sheet?.type === 'voice' ? <VoiceSheet onClose={() => setSheet(null)} /> : null}
+      {sheet?.type === 'sync' ? <SyncSheet onClose={() => setSheet(null)} /> : null}
 
       {sheet?.type === 'settings' ? (
         <>
@@ -367,9 +373,16 @@ function InstallmentDetailRoute({
 }
 
 export default function App() {
+  const locked = lockEnabled() && !isSessionOpen()
+  if (typeof document !== 'undefined') {
+    const theme = localStorage.getItem('hy-theme')
+    if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme
+  }
   return (
     <StoreProvider>
-      <Shell />
+      <ExtrasProvider>
+        {locked ? <LockScreen /> : <Shell />}
+      </ExtrasProvider>
     </StoreProvider>
   )
 }

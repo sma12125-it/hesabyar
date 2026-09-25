@@ -1,3 +1,4 @@
+import { CloudLamp } from '../components/CloudLamp'
 import { formatRial, toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
 import { BalanceHero } from '../components/BalanceHero'
@@ -27,7 +28,7 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
 
   return (
     <div
-      className="app-scroll"
+      className="app-scroll page-home"
       onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}
     >
       <div className="top-row">
@@ -39,6 +40,7 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
         >
           خانه
         </h1>
+        <CloudLamp />
         <button
           className="icon-btn"
           type="button"

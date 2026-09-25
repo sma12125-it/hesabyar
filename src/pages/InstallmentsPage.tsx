@@ -1,4 +1,7 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { dueReminderLines, notifyReminders } from '../lib/reminders'
+import { useExtras } from '../store/Extras'
 import { formatPersianDate } from '../lib/dates'
 import { paidCount, planBadge } from '../lib/installments'
 import { todayIso } from '../lib/iso'
@@ -22,6 +25,7 @@ export function InstallmentsPage({
   onCreate: () => void
 }) {
   const { plans, items } = useStore()
+  const { reminders, setReminders } = useExtras()
   const navigate = useNavigate()
   const today = todayIso()
   const badgeRank: Record<PlanBadge, number> = { overdue: 0, 'due-soon': 1, ok: 2 }
@@ -38,6 +42,11 @@ export function InstallmentsPage({
   const completed = plans.filter((p) => p.status === 'completed')
   const archived = plans.filter((p) => p.status === 'archived')
   const empty = plans.length === 0
+  const lines = dueReminderLines(plans, items, today, reminders.leadDays)
+
+  useEffect(() => {
+    if (reminders.enabled) void notifyReminders(lines)
+  }, [reminders.enabled, reminders.leadDays, lines.join('|')])
 
   return (
     <div className="app-scroll" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
@@ -48,6 +57,23 @@ export function InstallmentsPage({
             ＋
           </button>
         )}
+      </div>
+
+      <div className="lg-row reminder-bar">
+        <div>
+          <div className="plan-name">یادآوری قسط</div>
+          <div className="plan-meta">{lines[0] ?? 'قسط نزدیکی برای یادآوری نیست'}</div>
+        </div>
+        <button
+          className="cat-mini"
+          type="button"
+          onClick={() => {
+            if (!reminders.enabled && typeof Notification !== 'undefined') void Notification.requestPermission()
+            void setReminders({ ...reminders, enabled: !reminders.enabled })
+          }}
+        >
+          {reminders.enabled ? 'روشن' : 'فعال‌سازی'}
+        </button>
       </div>
 
       {empty ? (

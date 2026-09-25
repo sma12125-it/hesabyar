@@ -75,6 +75,11 @@ export function SwipeRow({
           if (el.hasPointerCapture(event.pointerId)) el.releasePointerCapture(event.pointerId)
           return
         }
+        try {
+          el.setPointerCapture(event.pointerId)
+        } catch {
+          /* pointer already gone */
+        }
         window.dispatchEvent(new CustomEvent('hy-swipe', { detail: idRef.current }))
         setPhase('dragging')
       }
@@ -132,7 +137,6 @@ export function SwipeRow({
     axis.current = 'undecided'
     dragging.current = true
     pointerId.current = event.pointerId
-    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
   function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {

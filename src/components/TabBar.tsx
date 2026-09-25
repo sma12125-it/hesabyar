@@ -7,6 +7,7 @@ export function TabBar({ compact, onQuickEntry }: { compact?: boolean; onQuickEn
 
   return (
     <nav className={`tab-bar${compact ? ' compact' : ''}`} aria-label="ناوبری اصلی">
+      <div className="desk-brand">حساب‌یار</div>
       <NavLink to="/" end className={({ isActive }) => `tab${isActive ? ' active' : ''}`}>
         <span className="ico">🏠</span>
         <span className="lbl">خانه</span>
@@ -26,6 +27,10 @@ export function TabBar({ compact, onQuickEntry }: { compact?: boolean; onQuickEn
       <NavLink to="/reports" className={({ isActive }) => `tab${isActive ? ' active' : ''}`}>
         <span className="ico">📈</span>
         <span className="lbl">گزارش</span>
+      </NavLink>
+      <NavLink to="/settings" className={({ isActive }) => `tab${isActive ? ' active' : ''}`}>
+        <span className="ico">⚙</span>
+        <span className="lbl">تنظیمات</span>
       </NavLink>
     </nav>
   )

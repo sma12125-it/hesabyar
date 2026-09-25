@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
+import { CardVaultSection } from '../components/CardVaultSection'
 import { AccountRow } from '../components/TxRow'
 import { BalanceHero } from '../components/BalanceHero'
 
@@ -24,6 +25,7 @@ export function AccountsPage({
       </div>
 
       {visible.length === 0 && archived.length === 0 ? (
+        <>
         <div className="empty-state lg">
           <div className="empty-ico">💳</div>
           <h2>هنوز حسابی نداری</h2>
@@ -32,6 +34,8 @@ export function AccountsPage({
             ＋ ساخت حساب جدید
           </button>
         </div>
+        <CardVaultSection />
+        </>
       ) : (
         <>
           <div style={{ marginTop: 12 }}>
@@ -41,6 +45,8 @@ export function AccountsPage({
               sub={`${toFaDigits(activeAccounts.length)} حساب فعال`}
             />
           </div>
+          <div className="split-wide">
+          <div>
           <div className="section-head">
             <h2>حساب‌های من</h2>
           </div>
@@ -69,6 +75,9 @@ export function AccountsPage({
               </div>
             </>
           ) : null}
+          </div>
+          <CardVaultSection />
+          </div>
         </>
       )}
     </div>

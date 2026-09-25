@@ -184,6 +184,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       balance: input.initialBalance,
       createdAt: now,
       updatedAt: now,
+      cardId: input.cardId,
     }
     const prev = dataRef.current
     await persistSnapshot(prev, { ...prev, accounts: [...prev.accounts, account] })

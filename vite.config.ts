@@ -17,10 +17,11 @@ export default defineConfig({
           if (
             url === '/' ||
             url === '/index.html' ||
+            url === '/hesabyar' ||
             url === '/hesabyar/' ||
             url === '/hesabyar/index.html'
           ) {
-            req.url = '/index.source.html'
+            req.url = '/hesabyar/index.source.html'
           }
           next()
         })
