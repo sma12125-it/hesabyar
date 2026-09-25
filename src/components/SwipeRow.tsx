@@ -2,7 +2,7 @@
  * Gesture swipe (not sticky Mail buttons). Physical map: right → delete, left → edit.
  * See `src/lib/swipe.ts`. After commit/cancel the row always snaps to translateX(0).
  */
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import {
   SWIPE_AXIS_LOCK_PX,
   SWIPE_SNAP_MS,
@@ -27,11 +27,16 @@ export function SwipeRow({
   const xRef = useRef(0)
   const startX = useRef(0)
   const startY = useRef(0)
+  const lastX = useRef(0)
+  const lastT = useRef(0)
+  const velocity = useRef(0)
   const axis = useRef<'undecided' | 'h' | 'v'>('undecided')
   const dragging = useRef(false)
+  const pointerId = useRef<number | null>(null)
   const suppressClick = useRef(false)
   const phaseRef = useRef(phase)
   const timerRef = useRef<number>(0)
+  const frontRef = useRef<HTMLDivElement>(null)
   const idRef = useRef(`swipe_${Math.random().toString(36).slice(2)}`)
   const canEdit = Boolean(onEdit)
   const canDelete = Boolean(onDelete)
@@ -54,6 +59,40 @@ export function SwipeRow({
 
   useEffect(() => () => window.clearTimeout(timerRef.current), [])
 
+  useEffect(() => {
+    const el = frontRef.current
+    if (!el || (!onEdit && !onDelete)) return
+    const onMove = (event: PointerEvent) => {
+      if (!dragging.current || phaseRef.current === 'feedback') return
+      if (pointerId.current != null && event.pointerId !== pointerId.current) return
+      const dx = event.clientX - startX.current
+      const dy = event.clientY - startY.current
+      if (axis.current === 'undecided') {
+        if (Math.abs(dx) < SWIPE_AXIS_LOCK_PX && Math.abs(dy) < SWIPE_AXIS_LOCK_PX) return
+        axis.current = Math.abs(dx) >= Math.abs(dy) ? 'h' : 'v'
+        if (axis.current === 'v') {
+          dragging.current = false
+          if (el.hasPointerCapture(event.pointerId)) el.releasePointerCapture(event.pointerId)
+          return
+        }
+        window.dispatchEvent(new CustomEvent('hy-swipe', { detail: idRef.current }))
+        setPhase('dragging')
+      }
+      if (axis.current !== 'h') return
+      event.preventDefault()
+      const now = event.timeStamp
+      const dt = now - lastT.current
+      if (dt > 0) velocity.current = (event.clientX - lastX.current) / dt
+      lastX.current = event.clientX
+      lastT.current = now
+      const next = clampSwipeOffset(dx, Boolean(onEdit), Boolean(onDelete))
+      xRef.current = next
+      setX(next)
+    }
+    el.addEventListener('pointermove', onMove, { passive: false })
+    return () => el.removeEventListener('pointermove', onMove)
+  }, [onEdit, onDelete])
+
   if (!onEdit && !onDelete) return children
 
   function commit(next: number) {
@@ -64,6 +103,7 @@ export function SwipeRow({
   function finish(action: 'edit' | 'delete' | null, holdPx: number) {
     dragging.current = false
     axis.current = 'undecided'
+    pointerId.current = null
     if (!action) {
       setPhase('idle')
       commit(0)
@@ -81,43 +121,36 @@ export function SwipeRow({
     }, delay)
   }
 
-  function onPointerDown(event: PointerEvent<HTMLDivElement>) {
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return
     if (phaseRef.current === 'feedback') return
     startX.current = event.clientX
     startY.current = event.clientY
+    lastX.current = event.clientX
+    lastT.current = event.timeStamp
+    velocity.current = 0
     axis.current = 'undecided'
     dragging.current = true
+    pointerId.current = event.pointerId
+    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  function onPointerMove(event: PointerEvent<HTMLDivElement>) {
-    if (!dragging.current || phaseRef.current === 'feedback') return
-    const dx = event.clientX - startX.current
-    const dy = event.clientY - startY.current
-    if (axis.current === 'undecided') {
-      if (Math.abs(dx) < SWIPE_AXIS_LOCK_PX && Math.abs(dy) < SWIPE_AXIS_LOCK_PX) return
-      axis.current = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v'
-      if (axis.current === 'h') {
-        event.currentTarget.setPointerCapture(event.pointerId)
-        window.dispatchEvent(new CustomEvent('hy-swipe', { detail: idRef.current }))
-        setPhase('dragging')
-      }
-    }
-    if (axis.current !== 'h') return
-    event.preventDefault()
-    commit(clampSwipeOffset(dx, canEdit, canDelete))
-  }
-
-  function onPointerUp() {
-    if (!dragging.current) return
+  function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!dragging.current && axis.current !== 'h') return
+    if (pointerId.current != null && event.pointerId !== pointerId.current) return
+    const wasHorizontal = axis.current === 'h'
     dragging.current = false
-    if (axis.current === 'h') {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    if (wasHorizontal) {
       suppressClick.current = true
-      const { action, holdPx } = releaseSwipe(xRef.current, canEdit, canDelete)
+      const { action, holdPx } = releaseSwipe(xRef.current, canEdit, canDelete, velocity.current)
       finish(action, holdPx)
       return
     }
     axis.current = 'undecided'
+    pointerId.current = null
     setPhase('idle')
   }
 
@@ -147,16 +180,15 @@ export function SwipeRow({
         ) : null}
       </div>
       <div
+        ref={frontRef}
         className={`swipe-front${phase === 'dragging' ? ' dragging' : ''}`}
         style={{
           transform: `translate3d(${x}px, 0, 0)`,
           transition: phase === 'dragging' ? 'none' : `transform ${SWIPE_SNAP_MS}ms ease-out`,
         }}
         onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        onLostPointerCapture={onPointerUp}
         onClickCapture={onClickCapture}
       >
         {children}

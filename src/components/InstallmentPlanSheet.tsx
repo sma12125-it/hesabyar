@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { INSTALLMENT_CATEGORY_ID, getCategory } from '../lib/categories'
 import { formatPersianDateFull } from '../lib/dates'
 import { DateField } from './DateField'
 import { todayIso } from '../lib/iso'
 import { tryLoanSchedule } from '../lib/loan'
 import { formatRial, parseDecimalInput, parseRialInput, toFaDigits } from '../lib/money'
-import { planHasPayment } from '../lib/installments'
+import { planHasPayment, validatePlanInput, validatePlanUpdate } from '../lib/installments'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
 import { PickerSheet } from './PickerSheet'
@@ -32,12 +32,28 @@ export function InstallmentPlanSheet({
   const [picker, setPicker] = useState<'account' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [keyboardInset, setKeyboardInset] = useState(0)
 
   const account = activeAccounts.find((a) => a.id === accountId)
   const rate = parseDecimalInput(rateRaw)
   const count = parseRialInput(countRaw)
   const category = getCategory(INSTALLMENT_CATEGORY_ID)
   const activeCount = plans.filter((p) => p.status === 'active').length
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    const update = () => {
+      setKeyboardInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
+    }
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    update()
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [])
+
   const schedule = useMemo(
     () => (kind === 'loan' && principal > 0 && count > 0 ? tryLoanSchedule(principal, rate, count) : null),
     [kind, principal, rate, count],
@@ -118,6 +134,22 @@ export function InstallmentPlanSheet({
   }
 
   const lastDiffers = Boolean(schedule && schedule.amounts[0] !== schedule.amounts[schedule.amounts.length - 1])
+  const invalid = locked
+    ? validatePlanUpdate({ name, defaultAccountId: accountId }, planItems, activeAccounts)
+    : validatePlanInput(
+        {
+          name,
+          installmentAmount: kind === 'loan' ? (schedule?.monthlyPayment ?? 0) : amount,
+          totalCount: count,
+          startDate,
+          defaultAccountId: accountId,
+          kind,
+          principal: kind === 'loan' ? principal : undefined,
+          annualRatePercent: kind === 'loan' ? rate : undefined,
+        },
+        activeAccounts,
+      )
+  const ctaDisabled = saving || Boolean(invalid)
 
   return (
     <>
@@ -126,7 +158,12 @@ export function InstallmentPlanSheet({
         <div className="ph-amt">{activeCount} برنامه فعال</div>
       </div>
       <div className="sheet-scrim" onClick={onClose} />
-      <div className="glass-sheet" role="dialog" aria-label={plan ? 'ویرایش برنامه' : 'برنامه جدید'}>
+      <div
+        className="glass-sheet sheet-sticky-cta"
+        role="dialog"
+        aria-label={plan ? 'ویرایش برنامه' : 'برنامه جدید'}
+        style={keyboardInset > 0 ? { bottom: keyboardInset } : undefined}
+      >
         <div className="sheet-handle" />
         <div className="sheet-header">
           <h1>{plan ? 'ویرایش برنامه' : 'برنامه جدید'}</h1>
@@ -308,11 +345,12 @@ export function InstallmentPlanSheet({
             <p className="sheet-sub">قسط آخر برای گرد کردن ریال ممکن است کمی متفاوت باشد · {toFaDigits(schedule!.months)} قسط</p>
           ) : null}
 
+        </div>
+        <div className="sheet-footer">
           <button
             className="cta-confirm"
             type="button"
-            style={{ marginTop: 14 }}
-            disabled={saving}
+            disabled={ctaDisabled}
             onClick={() => void save()}
           >
             {saving ? 'در حال ذخیره…' : plan ? 'ذخیره تغییرات' : 'ذخیره برنامه'}

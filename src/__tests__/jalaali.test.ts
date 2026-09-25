@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addDaysIso, isoFromParts } from '../lib/iso'
 import {
   addJalaliMonths,
+  addJalaliMonthsIso,
   isLeapJalaaliYear,
   isoToJalali,
   isValidJalaaliDate,
@@ -104,6 +105,17 @@ describe('Jalali calendar grid', () => {
     expect(mehr.offset).toBeGreaterThan(0)
     expect(addJalaliMonths(1405, 12, 1)).toEqual({ jy: 1406, jm: 1 })
     expect(addJalaliMonths(1405, 1, -1)).toEqual({ jy: 1404, jm: 12 })
+  })
+
+  it('adds Jalali months on an ISO date without permanently shifting the day', () => {
+    const day6 = jalaliToIso(1405, 6, 6)!
+    for (let i = 0; i < 14; i += 1) {
+      expect(isoToJalali(addJalaliMonthsIso(day6, i))?.jd).toBe(6)
+    }
+    const day31 = jalaliToIso(1404, 6, 31)!
+    expect(isoToJalali(addJalaliMonthsIso(day31, 1))).toEqual({ jy: 1404, jm: 7, jd: 30 })
+    expect(isoToJalali(addJalaliMonthsIso(day31, 7))).toEqual({ jy: 1405, jm: 1, jd: 31 })
+    expect(isoToJalali(addJalaliMonthsIso(day31, 6))).toEqual({ jy: 1404, jm: 12, jd: 29 })
   })
 
   it('keeps ISO persistence as Gregorian YYYY-MM-DD', () => {

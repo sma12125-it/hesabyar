@@ -14,11 +14,13 @@
  * instead of leaving buttons stuck open. Below threshold → snap closed, no action.
  */
 
-export const SWIPE_THRESHOLD_PX = 72
+export const SWIPE_THRESHOLD_PX = 56
+export const SWIPE_FLICK_PX = 28
+export const SWIPE_FLICK_VELOCITY = 0.45
 export const SWIPE_PEEK_PX = 88
-export const SWIPE_MAX_PX = 120
-export const SWIPE_FEEDBACK_MS = 200
-export const SWIPE_AXIS_LOCK_PX = 8
+export const SWIPE_MAX_PX = 132
+export const SWIPE_FEEDBACK_MS = 220
+export const SWIPE_AXIS_LOCK_PX = 10
 export const SWIPE_SNAP_MS = 180
 
 export type SwipeKind = 'edit' | 'delete'
@@ -46,10 +48,14 @@ export function releaseSwipe(
   dx: number,
   canEdit: boolean,
   canDelete: boolean,
+  velocity = 0,
 ): { action: SwipeArmed; holdPx: number } {
   const action = swipeArmed(dx, canEdit, canDelete)
   if (action === 'delete') return { action, holdPx: SWIPE_PEEK_PX }
   if (action === 'edit') return { action, holdPx: -SWIPE_PEEK_PX }
+  const flick = Math.abs(dx) >= SWIPE_FLICK_PX && Math.abs(velocity) >= SWIPE_FLICK_VELOCITY
+  if (flick && dx > 0 && canDelete) return { action: 'delete', holdPx: SWIPE_PEEK_PX }
+  if (flick && dx < 0 && canEdit) return { action: 'edit', holdPx: -SWIPE_PEEK_PX }
   return { action: null, holdPx: 0 }
 }
 

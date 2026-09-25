@@ -10,7 +10,7 @@ import {
   validatePlanInput,
   validatePlanUpdate,
 } from '../lib/installments'
-import { addCalendarMonths } from '../lib/iso'
+import { isoToJalali, jalaliToIso, jalaaliMonthLength } from '../lib/jalaali'
 import type { Account, InstallmentPlan } from '../types'
 
 const today = '2026-09-15'
@@ -26,19 +26,41 @@ const account: Account = {
 }
 
 describe('installment generation', () => {
-  it('creates N monthly items from the start date', () => {
-    const items = generateInstallmentItems('p1', 3_200_000, 12, '2026-03-18')
+  it('creates N monthly items on the same Jalali day', () => {
+    const start = jalaliToIso(1405, 1, 6)!
+    const items = generateInstallmentItems('p1', 3_200_000, 12, start)
     expect(items).toHaveLength(12)
     expect(items[0]?.index).toBe(1)
-    expect(items[0]?.dueDate).toBe('2026-03-18')
-    expect(items[1]?.dueDate).toBe('2026-04-18')
-    expect(items[11]?.dueDate).toBe(addCalendarMonths('2026-03-18', 11))
+    expect(items[0]?.dueDate).toBe(start)
+    expect(isoToJalali(items[1]!.dueDate)).toEqual({ jy: 1405, jm: 2, jd: 6 })
+    expect(isoToJalali(items[11]!.dueDate)).toEqual({ jy: 1405, jm: 12, jd: 6 })
     expect(items.every((i) => i.amount === 3_200_000 && i.status === 'pending')).toBe(true)
   })
 
-  it('clamps month-end days (31 Jan + 1 month → 28 Feb 2026)', () => {
-    const items = generateInstallmentItems('p', 1, 2, '2026-01-31')
-    expect(items[1]?.dueDate).toBe('2026-02-28')
+  it('keeps Jalali day 31 and only clamps months that lack that day', () => {
+    const start = jalaliToIso(1403, 1, 31)!
+    const items = generateInstallmentItems('p', 1, 13, start)
+    for (let month = 1; month <= 6; month += 1) {
+      expect(isoToJalali(items[month - 1]!.dueDate)).toEqual({ jy: 1403, jm: month, jd: 31 })
+    }
+    for (let month = 7; month <= 11; month += 1) {
+      expect(isoToJalali(items[month - 1]!.dueDate)).toEqual({ jy: 1403, jm: month, jd: 30 })
+    }
+    expect(isoToJalali(items[11]!.dueDate)).toEqual({
+      jy: 1403,
+      jm: 12,
+      jd: jalaaliMonthLength(1403, 12),
+    })
+    expect(isoToJalali(items[12]!.dueDate)).toEqual({ jy: 1404, jm: 1, jd: 31 })
+  })
+
+  it('clamps Esfand 31 in a non-leap year then returns to day 31', () => {
+    const start = jalaliToIso(1404, 1, 31)!
+    const items = generateInstallmentItems('p', 1, 13, start)
+    expect(jalaaliMonthLength(1404, 12)).toBe(29)
+    expect(isoToJalali(items[11]!.dueDate)).toEqual({ jy: 1404, jm: 12, jd: 29 })
+    expect(isoToJalali(items[6]!.dueDate)).toEqual({ jy: 1404, jm: 7, jd: 30 })
+    expect(isoToJalali(items[12]!.dueDate)).toEqual({ jy: 1405, jm: 1, jd: 31 })
   })
 })
 

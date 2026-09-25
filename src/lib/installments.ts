@@ -1,5 +1,6 @@
 import { INSTALLMENT_CATEGORY_ID } from './categories'
-import { addCalendarMonths, compareIso, daysUntil, isValidIsoDate } from './iso'
+import { addJalaliMonthsIso } from './jalaali'
+import { compareIso, daysUntil, isValidIsoDate } from './iso'
 import { createId } from './ids'
 import { buildLoanSchedule } from './loan'
 import { validateAmount } from './money'
@@ -29,7 +30,7 @@ export function generateInstallmentItems(
       id: createId('ii'),
       planId,
       index: i + 1,
-      dueDate: addCalendarMonths(startDate, i),
+      dueDate: addJalaliMonthsIso(startDate, i),
       amount: amounts ? amounts[i]! : (amount as number),
       status: 'pending',
     })

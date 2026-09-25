@@ -20,7 +20,8 @@ interface HomePageProps {
 export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, onSettings }: HomePageProps) {
   const { activeAccounts, totalBalance, transactions, accounts, plans, items } = useStore()
   const navigate = useNavigate()
-  const recent = visibleLedger(transactions).slice(0, 8)
+  const ledger = visibleLedger(transactions)
+  const recent = ledger.slice(0, 2)
   const today = todayIso()
   const hints = homeInstallmentHints(plans, items, today).slice(0, 4)
 
@@ -120,9 +121,11 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
 
       <div className="section-head">
         <h2>تراکنش‌های اخیر</h2>
-        <button className="link" type="button" onClick={onAll}>
-          همه
-        </button>
+        {ledger.length > 0 ? (
+          <button className="link show-all" type="button" onClick={onAll}>
+            نمایش همه
+          </button>
+        ) : null}
       </div>
 
       <div className="tx-list">
