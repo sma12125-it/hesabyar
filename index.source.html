@@ -15,6 +15,13 @@
     <title>حساب‌یار</title>
   </head>
   <body>
+    <script>
+      (function () {
+        var viewport = window.visualViewport
+        var height = viewport ? viewport.height : window.innerHeight
+        document.documentElement.style.setProperty('--hy-vh', Math.round(height) + 'px')
+      })()
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
