@@ -11,31 +11,11 @@ export interface CloudSnapshot<T> {
 
 const SESSION_KEY = 'hy-cloud-session'
 
-const CONFIG_KEY = 'hy-supabase-config'
+const CLOUD_URL = 'https://yiluruldxtgfuxqwosri.supabase.co'
+const CLOUD_KEY = 'sb_publishable_tHV7NoCAC-3czs4yMG1Z7Q_bg05S1MI'
 
-export function loadSupabaseConfig(): { url: string; key: string } | null {
-  try {
-    const raw = localStorage.getItem(CONFIG_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as { url?: string; key?: string }
-    if (!parsed.url?.trim() || !parsed.key?.trim()) return null
-    return { url: parsed.url.trim().replace(/\/$/, ''), key: parsed.key.trim() }
-  } catch {
-    return null
-  }
-}
-
-export function saveSupabaseConfig(url: string, key: string) {
-  localStorage.setItem(CONFIG_KEY, JSON.stringify({ url: url.trim(), key: key.trim() }))
-}
-
-export function supabaseConfig(): { url: string; key: string } | null {
-  const stored = loadSupabaseConfig()
-  if (stored) return stored
-  const url = import.meta.env.VITE_SUPABASE_URL?.trim()
-  const key = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
-  if (!url || !key) return null
-  return { url: url.replace(/\/$/, ''), key }
+export function supabaseConfig(): { url: string; key: string } {
+  return { url: CLOUD_URL, key: CLOUD_KEY }
 }
 
 export function loadSession(): CloudSession | null {
@@ -52,19 +32,34 @@ export function saveSession(session: CloudSession | null) {
   else localStorage.setItem(SESSION_KEY, JSON.stringify(session))
 }
 
+async function readJson(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text()
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    throw new Error('پاسخ ابر نامعتبر بود')
+  }
+}
+
 async function authRequest(path: string, body: unknown): Promise<CloudSession> {
   const cfg = supabaseConfig()
-  if (!cfg) throw new Error('نشانی Supabase تنظیم نشده است')
   const res = await fetch(`${cfg.url}${path}`, {
     method: 'POST',
-    headers: { apikey: cfg.key, 'Content-Type': 'application/json' },
+    headers: {
+      apikey: cfg.key,
+      Authorization: `Bearer ${cfg.key}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify(body),
   })
-  const json = (await res.json()) as { access_token?: string; user?: { id: string; email?: string }; msg?: string; error_description?: string; message?: string }
-  if (!res.ok || !json.access_token || !json.user?.id) {
-    throw new Error(json.error_description || json.msg || json.message || 'ورود به ابر ناموفق بود')
+  const json = await readJson(res)
+  const accessToken = typeof json.access_token === 'string' ? json.access_token : ''
+  const user = json.user as { id?: string; email?: string } | undefined
+  if (!res.ok || !accessToken || !user?.id) {
+    const message = json.error_description || json.msg || json.message
+    throw new Error(typeof message === 'string' ? message : 'ورود به ابر ناموفق بود')
   }
-  return { accessToken: json.access_token, userId: json.user.id, email: json.user.email ?? '' }
+  return { accessToken, userId: user.id, email: user.email ?? '' }
 }
 
 export function signUp(email: string, password: string) {
@@ -77,7 +72,6 @@ export function signIn(email: string, password: string) {
 
 export async function pushSnapshot<T>(session: CloudSession, snapshot: CloudSnapshot<T>): Promise<void> {
   const cfg = supabaseConfig()
-  if (!cfg) throw new Error('نشانی Supabase تنظیم نشده است')
   const res = await fetch(`${cfg.url}/rest/v1/snapshots`, {
     method: 'POST',
     headers: {
@@ -93,7 +87,6 @@ export async function pushSnapshot<T>(session: CloudSession, snapshot: CloudSnap
 
 export async function pullSnapshot<T>(session: CloudSession): Promise<CloudSnapshot<T> | null> {
   const cfg = supabaseConfig()
-  if (!cfg) throw new Error('نشانی Supabase تنظیم نشده است')
   const res = await fetch(`${cfg.url}/rest/v1/snapshots?user_id=eq.${session.userId}&select=updated_at,payload`, {
     headers: { apikey: cfg.key, Authorization: `Bearer ${session.accessToken}` },
   })
