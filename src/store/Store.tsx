@@ -80,6 +80,13 @@ interface StoreValue {
   createCategory: (kind: 'expense' | 'income', name: string) => Promise<Category>
   renameCategory: (id: string, name: string) => Promise<void>
   deleteCategory: (id: string) => Promise<void>
+  importCloud: (data: {
+    accounts: Account[]
+    transactions: Transaction[]
+    plans: InstallmentPlan[]
+    items: InstallmentItem[]
+    customCategories?: Category[]
+  }) => Promise<void>
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
@@ -119,6 +126,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       applySnapshot(hydrated)
       try {
         await db.applyDataPatch(patchToWrites(prev, hydrated))
+        const { notifyLocalChange } = await import('../lib/sync')
+        notifyLocalChange()
       } catch (err) {
         applySnapshot(prev)
         throw err
@@ -582,6 +591,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await db.replaceAllData(demo.accounts, demo.transactions, demo.plans, demo.items)
     await db.setKv('seeded', true)
     await refresh()
+    const { notifyLocalChange } = await import('../lib/sync')
+    notifyLocalChange()
   }, [refresh])
 
   const wipeAll = useCallback(async () => {
@@ -590,12 +601,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await db.setKv('customCategories', [])
     setCustomCategories([])
     await refresh()
+    const { notifyLocalChange } = await import('../lib/sync')
+    notifyLocalChange()
   }, [refresh])
 
   const persistCategories = useCallback(async (next: Category[]) => {
     const clean = next.filter((c) => c.kind !== 'transfer' && !isProtectedCategory(c.id))
     setCustomCategories(clean)
     await db.setKv('customCategories', clean)
+    const { notifyLocalChange } = await import('../lib/sync')
+    notifyLocalChange()
   }, [])
 
   const createCategory = useCallback(async (kind: 'expense' | 'income', name: string) => {
@@ -629,6 +644,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await persistSnapshot(prev, { ...prev, transactions: nextTransactions })
     await persistCategories(customCategories.filter((c) => c.id !== id))
   }, [customCategories, persistCategories, persistSnapshot])
+
+  const importCloud = useCallback(async (data: {
+    accounts: Account[]
+    transactions: Transaction[]
+    plans: InstallmentPlan[]
+    items: InstallmentItem[]
+    customCategories?: Category[]
+  }) => {
+    const { withoutSync } = await import('../lib/sync')
+    await withoutSync(async () => {
+      await db.replaceAllData(data.accounts, data.transactions, data.plans, data.items)
+      const customs = data.customCategories ?? []
+      await db.setKv('customCategories', customs)
+      setCustomCategories(customs)
+      applySnapshot(data)
+    })
+  }, [applySnapshot])
 
   const value = useMemo<StoreValue>(
     () => ({
@@ -664,6 +696,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createCategory,
       renameCategory,
       deleteCategory,
+      importCloud,
     }),
     [
       ready,
@@ -698,6 +731,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createCategory,
       renameCategory,
       deleteCategory,
+      importCloud,
     ],
   )
 

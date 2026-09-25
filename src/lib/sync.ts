@@ -1,5 +1,7 @@
 export interface CloudSession {
   accessToken: string
+  refreshToken?: string
+  expiresAt?: number
   userId: string
   email: string
 }
@@ -30,6 +32,61 @@ export function loadSession(): CloudSession | null {
 export function saveSession(session: CloudSession | null) {
   if (!session) localStorage.removeItem(SESSION_KEY)
   else localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+  window.dispatchEvent(new Event('hy-cloud-session'))
+}
+
+const listeners = new Set<() => void>()
+let mute = 0
+
+export function onLocalChange(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+export function notifyLocalChange() {
+  if (mute > 0) return
+  localStorage.setItem('hy-cloud-dirty', '1')
+  listeners.forEach((listener) => listener())
+}
+
+export async function withoutSync<T>(run: () => Promise<T>): Promise<T> {
+  mute += 1
+  try {
+    return await run()
+  } finally {
+    mute -= 1
+  }
+}
+
+export function cloudDirty() {
+  return localStorage.getItem('hy-cloud-dirty') === '1'
+}
+
+export function clearCloudDirty() {
+  localStorage.removeItem('hy-cloud-dirty')
+}
+
+export async function ensureSession(): Promise<CloudSession | null> {
+  const session = loadSession()
+  if (!session) return null
+  if (!session.refreshToken || !session.expiresAt || session.expiresAt * 1000 - Date.now() > 60_000) return session
+  const cfg = supabaseConfig()
+  const res = await fetch(`${cfg.url}/auth/v1/token?grant_type=refresh_token`, {
+    method: 'POST',
+    headers: { apikey: cfg.key, Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: session.refreshToken }),
+  })
+  const json = await readJson(res)
+  const accessToken = typeof json.access_token === 'string' ? json.access_token : ''
+  if (!res.ok || !accessToken) return session
+  const next: CloudSession = {
+    ...session,
+    accessToken,
+    refreshToken: typeof json.refresh_token === 'string' ? json.refresh_token : session.refreshToken,
+    expiresAt: typeof json.expires_at === 'number' ? json.expires_at : session.expiresAt,
+  }
+  saveSession(next)
+  return next
 }
 
 async function readJson(res: Response): Promise<Record<string, unknown>> {
@@ -59,7 +116,13 @@ async function authRequest(path: string, body: unknown): Promise<CloudSession> {
     const message = json.error_description || json.msg || json.message
     throw new Error(typeof message === 'string' ? message : 'ورود به ابر ناموفق بود')
   }
-  return { accessToken, userId: user.id, email: user.email ?? '' }
+  return {
+    accessToken,
+    refreshToken: typeof json.refresh_token === 'string' ? json.refresh_token : undefined,
+    expiresAt: typeof json.expires_at === 'number' ? json.expires_at : undefined,
+    userId: user.id,
+    email: user.email ?? '',
+  }
 }
 
 export function signUp(email: string, password: string) {

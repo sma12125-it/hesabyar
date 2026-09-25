@@ -99,7 +99,7 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
           <h1>اتصال ابری</h1>
           <button className="sheet-close" type="button" onClick={onClose} aria-label="بستن">✕</button>
         </div>
-        <p className="sheet-sub">اتصال آماده است. با ایمیل خود حساب بسازید. فقط همان حساب به دادهٔ آنلاین دسترسی دارد و کارت‌ها رمزشده می‌روند.</p>
+        <p className="sheet-sub">بعد از ورود، هر تراکنش خودش روی ابر ذخیره می‌شود و دستگاه‌های دیگر همین حساب همان لحظه به‌روز می‌شوند.</p>
         {error ? <div className="banner error"><span>{error}</span></div> : null}
         {info ? <p className="sheet-sub">{info}</p> : null}
         <p className="sheet-sub">{session ? `متصل: ${session.email}` : 'با ایمیل وارد شوید. آخرین نوشتن برنده است.'}</p>

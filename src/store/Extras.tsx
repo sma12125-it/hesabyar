@@ -15,9 +15,12 @@ interface ExtrasValue {
   budgets: Budget[]
   goals: SavingsGoal[]
   reminders: ReminderSettings
+  vaultConfigured: boolean
   unlockVault: (passphrase: string) => Promise<void>
   lockVault: () => void
-  saveCard: (input: Omit<BankCard, 'id' | 'createdAt'>, passphrase: string) => Promise<BankCard>
+  setVaultPassword: (passphrase: string) => Promise<void>
+  changeVaultPassword: (current: string, next: string) => Promise<void>
+  saveCard: (input: Omit<BankCard, 'id' | 'createdAt'> & { id?: string }, passphrase?: string) => Promise<BankCard>
   linkCard: (id: string, accountId: string) => Promise<void>
   deleteCard: (id: string, passphrase: string) => Promise<void>
   saveBudget: (budget: Budget) => Promise<void>
@@ -71,6 +74,8 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
     setBlob(stored)
     setCards(next)
     setPassphrase(phrase)
+    const { notifyLocalChange } = await import('../lib/sync')
+    notifyLocalChange()
   }, [blob])
 
   const unlockVault = useCallback(async (phrase: string) => {
@@ -86,6 +91,7 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<ExtrasValue>(() => ({
     unlocked: passphrase != null,
+    vaultConfigured: blob != null,
     cards,
     budgets,
     goals,
@@ -95,13 +101,35 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
       setPassphrase(null)
       setCards([])
     },
+    setVaultPassword: async (phrase) => {
+      if (blob) throw new Error('رمز گاوصندوق قبلاً تعیین شده است')
+      const trimmed = phrase.trim()
+      if (trimmed.length < 4) throw new Error('رمز گاوصندوق حداقل ۴ حرف است')
+      await persistCards([], trimmed)
+    },
+    changeVaultPassword: async (current, next) => {
+      if (!blob) throw new Error('اول رمز گاوصندوق را تعیین کنید')
+      const trimmed = next.trim()
+      if (trimmed.length < 4) throw new Error('رمز تازه حداقل ۴ حرف است')
+      const opened = await openCards(current, blob.salt, blob.payload)
+      await persistCards(opened, trimmed)
+    },
     saveCard: async (input, phrase) => {
       const error = validateCard(input)
       if (error) throw new Error(error)
       const active = passphrase ?? phrase
-      const current = blob && passphrase == null ? await openCards(phrase, blob.salt, blob.payload) : cards
-      const card: BankCard = { ...input, id: createId('card'), createdAt: Date.now(), pan: input.pan.replace(/\D/g, '') }
-      await persistCards([...current, card], active)
+      if (!active) throw new Error('گاوصندوق قفل است')
+      const current = blob && passphrase == null ? await openCards(active, blob.salt, blob.payload) : cards
+      const existing = input.id ? current.find((card) => card.id === input.id) : undefined
+      const card: BankCard = {
+        ...input,
+        id: existing?.id ?? createId('card'),
+        createdAt: existing?.createdAt ?? Date.now(),
+        pan: input.pan.replace(/\D/g, ''),
+        accountId: existing?.accountId,
+      }
+      const next = existing ? current.map((row) => (row.id === card.id ? card : row)) : [...current, card]
+      await persistCards(next, active)
       return card
     },
     linkCard: async (id, accountId) => {
@@ -120,11 +148,15 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
         : [...budgets, budget]
       setBudgets(next)
       await db.setKv('budgets', next)
+      const { notifyLocalChange } = await import('../lib/sync')
+      notifyLocalChange()
     },
     deleteBudget: async (id) => {
       const next = budgets.filter((row) => row.id !== id)
       setBudgets(next)
       await db.setKv('budgets', next)
+      const { notifyLocalChange } = await import('../lib/sync')
+      notifyLocalChange()
     },
     saveGoal: async (goal) => {
       const row: SavingsGoal = { ...goal, id: goal.id ?? createId('goal') }
@@ -133,15 +165,21 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
         : [...goals, row]
       setGoals(next)
       await db.setKv('goals', next)
+      const { notifyLocalChange } = await import('../lib/sync')
+      notifyLocalChange()
     },
     deleteGoal: async (id) => {
       const next = goals.filter((item) => item.id !== id)
       setGoals(next)
       await db.setKv('goals', next)
+      const { notifyLocalChange } = await import('../lib/sync')
+      notifyLocalChange()
     },
     setReminders: async (next) => {
       setReminderState(next)
       await db.setKv('reminders', next)
+      const { notifyLocalChange } = await import('../lib/sync')
+      notifyLocalChange()
     },
     exportLocal: async () => ({
       budgets,
