@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ensureSession, loadSession, notifyUser, pullSnapshot, pushSnapshot, saveSession, signIn, signUp, type CloudSession } from '../lib/sync'
+import { generateRecoveryCode, logoutCompletely } from '../lib/account'
+import { ensureSession, loadSession, notifyUser, pullSnapshot, pushSnapshot, saveRecoveryCode, type CloudSession } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 import { useStore } from '../store/Store'
 
@@ -19,11 +20,10 @@ interface Payload {
 export function SyncSheet({ onClose }: { onClose: () => void }) {
   const store = useStore()
   const extras = useExtras()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [session, setSession] = useState<CloudSession | null>(() => loadSession())
+  const [session] = useState<CloudSession | null>(() => loadSession())
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+  const [recoveryCode, setRecoveryCode] = useState('')
 
   async function payload(): Promise<Payload> {
     const local = await extras.exportLocal()
@@ -41,16 +41,18 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
     }
   }
 
-  async function enter(mode: 'in' | 'up') {
+  async function makeRecoveryCode() {
+    if (!session) return
     setError(null)
     try {
-      const next = mode === 'in' ? await signIn(email, password) : await signUp(email, password)
-      saveSession(next)
-      setSession(next)
-      setInfo(mode === 'up' ? 'حساب ساخته شد' : 'وارد شدید')
-      notifyUser(mode === 'up' ? 'حساب ابری ساخته شد' : 'وارد حساب ابری شدید')
+      const active = await ensureSession()
+      if (!active) throw new Error('اول وارد حساب شوید')
+      const code = generateRecoveryCode()
+      await saveRecoveryCode(active, code)
+      setRecoveryCode(code)
+      setInfo('کد تازه ساخته شد. کد قبلی دیگر کار نمی‌کند.')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'خطای ابر'
+      const message = err instanceof Error ? err.message : 'کد ساخته نشد'
       setError(message)
       notifyUser(message)
     }
@@ -115,19 +117,16 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
         {error ? <div className="banner error"><span>{error}</span></div> : null}
         {info ? <p className="sheet-sub">{info}</p> : null}
         <p className="sheet-sub">{session ? `متصل: ${session.email}` : 'با ایمیل وارد شوید. بعد از ورود، ارسال و دریافت خودکار است.'}</p>
-            {!session ? (
-              <div className="field-stack">
-                <input className="field-input" type="email" placeholder="ایمیل" value={email} onChange={(e) => setEmail(e.target.value)} />
-                <input className="field-input" type="password" placeholder="رمز" value={password} onChange={(e) => setPassword(e.target.value)} />
-                <button className="cta-confirm" type="button" onClick={() => void enter('in')}>ورود</button>
-                <button className="cat-mini" type="button" onClick={() => void enter('up')}>ساخت حساب</button>
+            {session ? (
+              <div className="confirm-actions">
+                <button className="cta-confirm" type="button" onClick={() => void push()}>ارسال دوباره</button>
+                <button className="cta-confirm" type="button" onClick={() => void pull()}>دریافت دوباره</button>
+                <button className="cat-mini" type="button" onClick={() => void makeRecoveryCode()}>کد بازیابی رمز حساب</button>
+                {recoveryCode ? <p className="recovery-code">{recoveryCode}</p> : null}
+                <button className="cat-mini danger" type="button" onClick={() => void logoutCompletely()}>خروج کامل</button>
               </div>
             ) : (
-              <div className="confirm-actions">
-                <button className="cta-confirm" type="button" onClick={() => void push()}>ارسال به ابر</button>
-                <button className="cta-confirm" type="button" onClick={() => void pull()}>دریافت از ابر</button>
-                <button className="cat-mini danger" type="button" onClick={() => { saveSession(null); setSession(null) }}>خروج</button>
-              </div>
+              <p className="sheet-sub">از صفحهٔ ورود با ایمیل و رمز وارد شوید.</p>
             )}
       </div>
     </>

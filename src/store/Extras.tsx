@@ -1,12 +1,16 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import * as db from '../db/db'
-import { openCards, sealCards, validateCard } from '../lib/vault'
+import { checkPasswordVerifier, generateRecoveryCode, rememberedAccountPassword } from '../lib/account'
+import { loadSession, signIn } from '../lib/sync'
+import { openCards, sealCards, unwrapText, validateCard, wrapText } from '../lib/vault'
 import { createId } from '../lib/ids'
 import type { BankCard, Budget, ReminderSettings, SavingsGoal } from '../types'
 
 interface VaultBlob {
   salt: string
   payload: string
+  accountWrap?: string
+  recoveryWrap?: string
 }
 
 interface ExtrasValue {
@@ -18,8 +22,11 @@ interface ExtrasValue {
   vaultConfigured: boolean
   unlockVault: (passphrase: string) => Promise<void>
   lockVault: () => void
-  setVaultPassword: (passphrase: string) => Promise<void>
-  changeVaultPassword: (current: string, next: string) => Promise<void>
+  setVaultPassword: (passphrase: string, accountPassword?: string) => Promise<string>
+  changeVaultPassword: (current: string, next: string, accountPassword?: string) => Promise<string>
+  recoverVaultPassword: (secret: string, mode: 'account' | 'code', next: string) => Promise<string>
+  resetVault: (passphrase: string, accountPassword?: string) => Promise<string>
+  clearLocal: () => Promise<void>
   saveCard: (input: Omit<BankCard, 'id' | 'createdAt'> & { id?: string }, passphrase?: string) => Promise<BankCard>
   linkCard: (id: string, accountId: string) => Promise<void>
   deleteCard: (id: string, passphrase: string) => Promise<void>
@@ -63,13 +70,18 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const persistCards = useCallback(async (next: BankCard[], phrase: string) => {
-    const sealed = await sealCards(phrase, next, blob ? undefined : undefined)
-    const saltBytes = blob?.salt
-    const packed = saltBytes
-      ? await sealCards(phrase, next, Uint8Array.from(atob(blob.salt), (c) => c.charCodeAt(0)))
-      : sealed
-    const stored = { salt: packed.salt, payload: packed.payload }
+  const persistCards = useCallback(async (next: BankCard[], phrase: string, wraps?: { accountWrap?: string; recoveryWrap?: string }) => {
+    const current = blob
+    const saltBytes = current?.salt
+      ? Uint8Array.from(atob(current.salt), (c) => c.charCodeAt(0))
+      : undefined
+    const packed = await sealCards(phrase, next, saltBytes)
+    const stored: VaultBlob = {
+      salt: packed.salt,
+      payload: packed.payload,
+      accountWrap: wraps ? wraps.accountWrap : current?.accountWrap,
+      recoveryWrap: wraps ? wraps.recoveryWrap : current?.recoveryWrap,
+    }
     await db.setKv('cardVault', stored)
     setBlob(stored)
     setCards(next)
@@ -77,6 +89,26 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
     const { notifyLocalChange } = await import('../lib/sync')
     notifyLocalChange()
   }, [blob])
+
+  const confirmAccountPassword = useCallback(async (accountPassword?: string) => {
+    const phrase = (accountPassword ?? rememberedAccountPassword()).trim()
+    if (!phrase) throw new Error('رمز حساب را وارد کنید تا بازیابی گاوصندوق ممکن بماند')
+    if (await checkPasswordVerifier(phrase)) return phrase
+    const session = loadSession()
+    if (!session) throw new Error('اول وارد حساب شوید')
+    await signIn(session.email, phrase)
+    return phrase
+  }, [])
+
+  const wrapsFor = useCallback(async (phrase: string, accountPassword?: string) => {
+    const account = await confirmAccountPassword(accountPassword)
+    const code = generateRecoveryCode()
+    return {
+      code,
+      accountWrap: await wrapText(phrase, account),
+      recoveryWrap: await wrapText(phrase, code),
+    }
+  }, [confirmAccountPassword])
 
   const unlockVault = useCallback(async (phrase: string) => {
     if (!blob) {
@@ -101,18 +133,71 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
       setPassphrase(null)
       setCards([])
     },
-    setVaultPassword: async (phrase) => {
+    setVaultPassword: async (phrase, accountPassword) => {
       if (blob) throw new Error('رمز گاوصندوق قبلاً تعیین شده است')
       const trimmed = phrase.trim()
       if (trimmed.length < 4) throw new Error('رمز گاوصندوق حداقل ۴ حرف است')
-      await persistCards([], trimmed)
+      const wraps = await wrapsFor(trimmed, accountPassword)
+      await persistCards([], trimmed, wraps)
+      return wraps.code
     },
-    changeVaultPassword: async (current, next) => {
+    changeVaultPassword: async (current, next, accountPassword) => {
       if (!blob) throw new Error('اول رمز گاوصندوق را تعیین کنید')
       const trimmed = next.trim()
       if (trimmed.length < 4) throw new Error('رمز تازه حداقل ۴ حرف است')
       const opened = await openCards(current, blob.salt, blob.payload)
-      await persistCards(opened, trimmed)
+      const wraps = await wrapsFor(trimmed, accountPassword)
+      await persistCards(opened, trimmed, wraps)
+      return wraps.code
+    },
+    recoverVaultPassword: async (secret, mode, next) => {
+      if (!blob) throw new Error('گاوصندوقی برای بازیابی نیست')
+      const trimmed = next.trim()
+      if (trimmed.length < 4) throw new Error('رمز تازه حداقل ۴ حرف است')
+      const wrapped = mode === 'account' ? blob.accountWrap : blob.recoveryWrap
+      if (!wrapped) throw new Error(mode === 'account' ? 'بازیابی با رمز حساب برای این گاوصندوق ثبت نشده' : 'کد بازیابی برای این گاوصندوق ثبت نشده')
+      let phrase = ''
+      try {
+        phrase = await unwrapText(wrapped, secret.trim())
+      } catch {
+        throw new Error(mode === 'account' ? 'رمز حساب نادرست است' : 'کد بازیابی نادرست است')
+      }
+      const opened = await openCards(phrase, blob.salt, blob.payload)
+      const accountPassword = mode === 'account' ? secret.trim() : rememberedAccountPassword()
+      if (!accountPassword) {
+        const code = generateRecoveryCode()
+        await persistCards(opened, trimmed, { recoveryWrap: await wrapText(trimmed, code) })
+        return code
+      }
+      const wraps = await wrapsFor(trimmed, accountPassword)
+      await persistCards(opened, trimmed, wraps)
+      return wraps.code
+    },
+    resetVault: async (phrase, accountPassword) => {
+      const trimmed = phrase.trim()
+      if (trimmed.length < 4) throw new Error('رمز گاوصندوق حداقل ۴ حرف است')
+      const wraps = await wrapsFor(trimmed, accountPassword)
+      const packed = await sealCards(trimmed, [])
+      const stored: VaultBlob = { salt: packed.salt, payload: packed.payload, accountWrap: wraps.accountWrap, recoveryWrap: wraps.recoveryWrap }
+      await db.setKv('cardVault', stored)
+      setBlob(stored)
+      setCards([])
+      setPassphrase(trimmed)
+      const { notifyLocalChange } = await import('../lib/sync')
+      notifyLocalChange()
+      return wraps.code
+    },
+    clearLocal: async () => {
+      setBlob(null)
+      setPassphrase(null)
+      setCards([])
+      setBudgets([])
+      setGoals([])
+      setReminderState(emptyReminder)
+      await db.setKv('budgets', [])
+      await db.setKv('goals', [])
+      await db.setKv('reminders', emptyReminder)
+      await db.setKv('cardVault', null)
     },
     saveCard: async (input, phrase) => {
       const error = validateCard(input)
@@ -207,7 +292,7 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
         setCards([])
       }
     },
-  }), [blob, budgets, cards, goals, passphrase, persistCards, reminders, unlockVault])
+  }), [blob, budgets, cards, goals, passphrase, persistCards, reminders, unlockVault, wrapsFor])
 
   return <ExtrasContext.Provider value={value}>{children}</ExtrasContext.Provider>
 }

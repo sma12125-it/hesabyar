@@ -33,6 +33,11 @@ export function markSessionOpen() {
   sessionStorage.setItem(OPEN, '1')
 }
 
+export function clearLock() {
+  localStorage.removeItem(KEY)
+  sessionStorage.removeItem(OPEN)
+}
+
 async function digest(value: string, salt: string): Promise<string> {
   const bytes = new TextEncoder().encode(`${salt}:${value}`)
   const hash = await crypto.subtle.digest('SHA-256', bytes)

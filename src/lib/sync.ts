@@ -121,8 +121,8 @@ async function authRequest(path: string, body: unknown): Promise<CloudSession> {
   const accessToken = typeof json.access_token === 'string' ? json.access_token : ''
   const user = json.user as { id?: string; email?: string } | undefined
   if (!res.ok || !accessToken || !user?.id) {
-    const message = json.error_description || json.msg || json.message
-    throw new Error(typeof message === 'string' ? message : 'ورود به ابر ناموفق بود')
+    const message = json.error_description || json.msg || json.error || json.message
+    throw new Error(typeof message === 'string' ? persianAuthError(message) : 'ورود به ابر ناموفق بود')
   }
   return {
     accessToken,
@@ -145,6 +145,101 @@ export function signUp(email: string, password: string) {
 
 export function signIn(email: string, password: string) {
   return authRequest('/auth/v1/token?grant_type=password', { email, password })
+}
+
+function persianAuthError(message: string) {
+  const text = message.toLowerCase()
+  if (text.includes('already registered') || text.includes('already been registered')) return 'این ایمیل قبلاً ثبت شده است'
+  if (text.includes('invalid login') || text.includes('invalid credentials')) return 'ایمیل یا رمز نادرست است'
+  if (text.includes('password')) return 'رمز پذیرفته نشد. حداقل ۶ حرف وارد کنید'
+  if (text.includes('unable to validate email')) return 'ایمیل نامعتبر است'
+  return message
+}
+
+export async function requestPasswordReset(email: string) {
+  const cfg = supabaseConfig()
+  const redirect = `${location.origin}${location.pathname}`
+  const res = await fetch(`${cfg.url}/auth/v1/recover`, {
+    method: 'POST',
+    headers: { apikey: cfg.key, Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, redirect_to: redirect }),
+  })
+  if (!res.ok) {
+    const json = await readJson(res)
+    const message = json.error_description || json.msg || json.message
+    throw new Error(typeof message === 'string' ? persianAuthError(message) : 'ارسال ایمیل بازیابی ناموفق بود')
+  }
+}
+
+let recoveryPeek: { accessToken: string; refreshToken?: string } | null | undefined
+
+export function takeRecoveryFromUrl(): { accessToken: string; refreshToken?: string } | null {
+  if (recoveryPeek !== undefined) return recoveryPeek
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const accessToken = hash.get('access_token')
+  if (hash.get('type') !== 'recovery' || !accessToken) {
+    recoveryPeek = null
+    return null
+  }
+  recoveryPeek = { accessToken, refreshToken: hash.get('refresh_token') || undefined }
+  return recoveryPeek
+}
+
+export function clearRecoveryFromUrl() {
+  if (!window.location.hash.includes('access_token')) return
+  window.history.replaceState(null, '', window.location.pathname + window.location.search)
+}
+
+export async function userFromToken(accessToken: string): Promise<{ id: string; email: string }> {
+  const cfg = supabaseConfig()
+  const res = await fetch(`${cfg.url}/auth/v1/user`, {
+    headers: { apikey: cfg.key, Authorization: `Bearer ${accessToken}` },
+  })
+  const json = await readJson(res)
+  const id = typeof json.id === 'string' ? json.id : ''
+  const email = typeof json.email === 'string' ? json.email : ''
+  if (!res.ok || !id) throw new Error('نشست بازیابی نامعتبر است')
+  return { id, email }
+}
+
+export async function updatePassword(accessToken: string, password: string) {
+  const cfg = supabaseConfig()
+  const res = await fetch(`${cfg.url}/auth/v1/user`, {
+    method: 'PUT',
+    headers: { apikey: cfg.key, Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) {
+    const json = await readJson(res)
+    const message = json.error_description || json.msg || json.message
+    throw new Error(typeof message === 'string' ? persianAuthError(message) : 'تغییر رمز ناموفق بود')
+  }
+}
+
+async function rpc(name: string, body: unknown, accessToken?: string) {
+  const cfg = supabaseConfig()
+  const res = await fetch(`${cfg.url}/rest/v1/rpc/${name}`, {
+    method: 'POST',
+    headers: {
+      apikey: cfg.key,
+      Authorization: `Bearer ${accessToken || cfg.key}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const json = await readJson(res).catch(() => ({} as Record<string, unknown>))
+    const message = json.message || json.error_description || json.msg
+    throw new Error(typeof message === 'string' ? message : 'بازیابی ناموفق بود')
+  }
+}
+
+export function saveRecoveryCode(session: CloudSession, code: string) {
+  return rpc('set_recovery_code', { p_code: code }, session.accessToken)
+}
+
+export function recoverWithCode(email: string, code: string, password: string) {
+  return rpc('recover_with_code', { p_email: email, p_code: code, p_password: password })
 }
 
 export async function pushSnapshot<T>(session: CloudSession, snapshot: CloudSnapshot<T>): Promise<void> {

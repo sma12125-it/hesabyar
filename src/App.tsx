@@ -16,8 +16,7 @@ import { AccountsPage } from './pages/AccountsPage'
 import { AccountDetailPage } from './pages/AccountDetailPage'
 import { ReportsPage } from './pages/ReportsPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { LockScreen } from './components/LockScreen'
-import { isSessionOpen, lockEnabled } from './lib/applock'
+import { AuthGate } from './components/AuthGate'
 import { VoiceSheet } from './components/VoiceSheet'
 import { SyncSheet } from './components/SyncSheet'
 import { AllTransactionsPage } from './pages/AllTransactionsPage'
@@ -394,7 +393,7 @@ function InstallmentDetailRoute({
 }
 
 export default function App() {
-  const locked = lockEnabled() && !isSessionOpen()
+  const [open, setOpen] = useState(false)
   if (typeof document !== 'undefined') {
     const theme = localStorage.getItem('hy-theme')
     if (theme === 'dark' || theme === 'light') document.documentElement.dataset.theme = theme
@@ -402,7 +401,7 @@ export default function App() {
   return (
     <StoreProvider>
       <ExtrasProvider>
-        {locked ? <LockScreen /> : <Shell />}
+        {open ? <Shell /> : <AuthGate onUnlock={() => setOpen(true)} />}
       </ExtrasProvider>
     </StoreProvider>
   )
