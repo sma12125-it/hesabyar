@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { PatternLock } from '../components/PatternLock'
 import { SyncSheet } from '../components/SyncSheet'
-import { loadLock, registerBiometric, setPattern, setPin, type AppLockRecord } from '../lib/applock'
+import { loadLock, registerBiometric, setPattern, type AppLockRecord } from '../lib/applock'
+import { rememberedAccountPassword } from '../lib/account'
 import { notifyUser } from '../lib/sync'
 import { useExtras } from '../store/Extras'
+import { VaultRecover } from '../components/VaultRecover'
 
 type Popup = 'cloud' | 'security' | 'vault' | null
 
@@ -33,7 +35,7 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
       <button className="settings-row lg" type="button" onClick={() => setPopup('cloud')}>
         <span>
           <strong>اتصال ابری</strong>
-          <small>ساخت حساب، ورود، و فرستادن یا گرفتن داده‌ها.</small>
+          <small>حساب متصل، همگام‌سازی خودکار، و خروج کامل.</small>
         </span>
         <span className="fchev">‹</span>
       </button>
@@ -47,7 +49,7 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
       <button className="settings-row lg" type="button" onClick={() => setPopup('security')}>
         <span>
           <strong>امنیت ورود</strong>
-          <small>رمز، الگوی کشیدنی، یا قفل اثر انگشت و چهرهٔ خود گوشی.</small>
+          <small>الگوی کشیدنی، یا روشن کردن ورود با اثر انگشت و چهرهٔ خود گوشی.</small>
         </span>
         <span className="fchev">‹</span>
       </button>
@@ -59,7 +61,6 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
 }
 
 function SecurityPopup({ onClose }: { onClose: () => void }) {
-  const [pin, setPinValue] = useState('')
   const [pattern, setPatternValue] = useState<number[]>([])
   const [lock, setLock] = useState<AppLockRecord>(() => loadLock())
   const [info, setInfo] = useState<string | null>(null)
@@ -74,9 +75,7 @@ function SecurityPopup({ onClose }: { onClose: () => void }) {
           <button className="sheet-close" type="button" onClick={onClose} aria-label="بستن">✕</button>
         </div>
         <div className="sheet-body-scroll">
-          <p className="sheet-sub">اثر انگشت و چهره از قفل خود گوشی خوانده می‌شود و داخل برنامه ذخیره نمی‌شود.</p>
-          <input className="field-input" inputMode="numeric" placeholder="رمز حداقل ۴ رقم" value={pin} onChange={(e) => setPinValue(e.target.value)} />
-          <button className="cat-mini" type="button" onClick={() => { if (pin.length < 4) return; void setPin(pin).then(() => { setLock(loadLock()); setInfo('رمز ذخیره شد') }) }}>ثبت رمز</button>
+          <p className="sheet-sub">رمز ورود همان رمز حساب است. اثر انگشت و چهره از قفل خود گوشی خوانده می‌شود و داخل برنامه ذخیره نمی‌شود.</p>
           <p className="sheet-sub">الگو را با کشیدن انگشت روی نقطه‌ها بکشید، نه با کلیک جدا روی هر نقطه.</p>
           <PatternLock value={pattern} onChange={setPatternValue} />
           <button className="cat-mini" type="button" onClick={() => { if (pattern.length < 4) { setInfo('حداقل ۴ نقطه را به هم وصل کنید'); return }; void setPattern(pattern.join('-')).then(() => { setLock(loadLock()); setPatternValue([]); setInfo('الگو ذخیره شد') }) }}>ثبت الگو</button>
@@ -84,15 +83,14 @@ function SecurityPopup({ onClose }: { onClose: () => void }) {
             className="cta-confirm"
             type="button"
             onClick={() => void registerBiometric()
-              .then(() => { setLock(loadLock()); setInfo('قفل گوشی وصل شد') })
+              .then(() => { setLock(loadLock()); setInfo('ورود با قفل گوشی روشن شد') })
               .catch((err) => setInfo(err instanceof Error ? err.message : 'قفل گوشی در دسترس نیست'))}
           >
-            اتصال به اثر انگشت یا چهرهٔ گوشی
+            فعال کردن ورود با اثر انگشت یا چهره
           </button>
           <p className="sheet-sub">
-            {lock.pinHash ? 'رمز روشن است. ' : ''}
             {lock.patternHash ? 'الگو روشن است. ' : ''}
-            {lock.credentialId ? 'قفل گوشی روشن است.' : ''}
+            {lock.credentialId ? 'قفل گوشی روشن است.' : 'قفل گوشی خاموش است.'}
           </p>
           {info ? <p className="sheet-sub">{info}</p> : null}
         </div>
@@ -106,6 +104,9 @@ function VaultPopup({ onClose }: { onClose: () => void }) {
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [again, setAgain] = useState('')
+  const [accountPassword, setAccountPassword] = useState('')
+  const [recoveryCode, setRecoveryCode] = useState('')
+  const [forgot, setForgot] = useState(false)
   const [info, setInfo] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -121,9 +122,13 @@ function VaultPopup({ onClose }: { onClose: () => void }) {
       return
     }
     try {
-      if (vaultConfigured) await changeVaultPassword(current, next)
-      else await setVaultPassword(next)
+      const account = accountPassword || rememberedAccountPassword()
+      const code = vaultConfigured
+        ? await changeVaultPassword(current, next, account)
+        : await setVaultPassword(next, account)
+      setRecoveryCode(code)
       setInfo(vaultConfigured ? 'رمز گاوصندوق عوض شد' : 'رمز گاوصندوق تعیین شد')
+      notifyUser('رمز گاوصندوق ذخیره شد')
       setCurrent('')
       setNext('')
       setAgain('')
@@ -147,12 +152,21 @@ function VaultPopup({ onClose }: { onClose: () => void }) {
           <p className="sheet-sub">
             {vaultConfigured
               ? 'رمز فعلی و رمز تازه را بنویسید. کارت‌ها با رمز تازه دوباره قفل می‌شوند.'
-              : 'یک رمز برای گاوصندوق بگذارید. باز کردن کارت‌ها فقط با همین رمز ممکن است.'}
+              : 'یک رمز برای گاوصندوق بگذارید. کد بازیابی را نگه دارید تا اگر رمز را فراموش کردید کارت‌ها بمانند.'}
           </p>
-          {vaultConfigured ? <input className="field-input" type="password" placeholder="رمز فعلی" value={current} onChange={(e) => setCurrent(e.target.value)} /> : null}
+          {vaultConfigured ? <input className="field-input" type="password" placeholder="رمز فعلی گاوصندوق" value={current} onChange={(e) => setCurrent(e.target.value)} /> : null}
           <input className="field-input" type="password" placeholder="رمز گاوصندوق" value={next} onChange={(e) => setNext(e.target.value)} />
           <input className="field-input" type="password" placeholder="تکرار رمز" value={again} onChange={(e) => setAgain(e.target.value)} />
+          {rememberedAccountPassword() ? null : <input className="field-input" type="password" placeholder="رمز حساب، برای بازیابی بعدی" value={accountPassword} onChange={(e) => setAccountPassword(e.target.value)} />}
           <button className="cta-confirm" type="button" onClick={() => void save()}>ثبت رمز</button>
+          {recoveryCode ? (
+            <>
+              <p className="sheet-sub">کد بازیابی گاوصندوق را نگه دارید. با این کد یا با رمز حساب می‌توانید رمز گاوصندوق را عوض کنید.</p>
+              <p className="recovery-code">{recoveryCode}</p>
+            </>
+          ) : null}
+          {vaultConfigured ? <button className="link" type="button" onClick={() => setForgot((value) => !value)}>رمز گاوصندوق را فراموش کرده‌ام</button> : null}
+          {forgot ? <VaultRecover onDone={(code) => { setRecoveryCode(code); setForgot(false); setInfo('رمز گاوصندوق بازیابی شد') }} /> : null}
           {error ? <div className="banner error"><span>{error}</span></div> : null}
           {info ? <p className="sheet-sub">{info}</p> : null}
         </div>

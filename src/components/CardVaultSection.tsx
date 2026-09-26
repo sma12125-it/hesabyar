@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BankCardFace } from './BankCardFace'
+import { VaultRecover } from './VaultRecover'
 import { useExtras } from '../store/Extras'
 
 export function CardVaultSection({ onEdit }: { onEdit: (id: string) => void }) {
@@ -7,6 +8,8 @@ export function CardVaultSection({ onEdit }: { onEdit: (id: string) => void }) {
   const [phrase, setPhrase] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<string | null>(null)
+  const [forgot, setForgot] = useState(false)
+  const [recoveryCode, setRecoveryCode] = useState('')
 
   async function unlock() {
     setError(null)
@@ -28,10 +31,20 @@ export function CardVaultSection({ onEdit }: { onEdit: (id: string) => void }) {
       {!vaultConfigured ? (
         <p className="sheet-sub">رمز گاوصندوق هنوز تعیین نشده. آن را در تنظیمات مشخص کنید.</p>
       ) : !unlocked ? (
-        <div className="field-chip">
-          <input className="field-input" type="password" placeholder="رمز گاوصندوق" value={phrase} onChange={(e) => setPhrase(e.target.value)} />
-          <button className="cat-mini" type="button" onClick={() => void unlock()}>باز کردن</button>
-        </div>
+        <>
+          <div className="field-chip">
+            <input className="field-input" type="password" placeholder="رمز گاوصندوق" value={phrase} onChange={(e) => setPhrase(e.target.value)} />
+            <button className="cat-mini" type="button" onClick={() => void unlock()}>باز کردن</button>
+            <button className="link" type="button" onClick={() => setForgot((value) => !value)}>رمز را فراموش کرده‌ام</button>
+          </div>
+          {forgot ? <VaultRecover onDone={(code) => { setRecoveryCode(code); setForgot(false) }} /> : null}
+          {recoveryCode ? (
+            <>
+              <p className="sheet-sub">کد تازهٔ بازیابی را نگه دارید.</p>
+              <p className="recovery-code">{recoveryCode}</p>
+            </>
+          ) : null}
+        </>
       ) : (
         <>
           <div className="card-gallery">

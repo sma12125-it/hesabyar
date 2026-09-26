@@ -150,12 +150,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     ;(async () => {
       try {
-        const seeded = await db.getKv<boolean>('seeded')
-        if (!seeded) {
-          const demo = demoDataset()
-          await db.replaceAllData(demo.accounts, demo.transactions, demo.plans, demo.items)
-          await db.setKv('seeded', true)
-        }
         if (!cancelled) {
           await refresh()
           const customs = (await db.getKv<Category[]>('customCategories')) ?? []

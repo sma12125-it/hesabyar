@@ -39,6 +39,28 @@ export async function sealCards(passphrase: string, cards: BankCard[], salt?: Ui
   return { salt: bytesToB64(nextSalt), payload: bytesToB64(packed) }
 }
 
+export async function wrapText(secret: string, password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const key = await deriveKey(password, salt)
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, text.encode(secret)))
+  const packed = new Uint8Array(salt.length + iv.length + cipher.length)
+  packed.set(salt, 0)
+  packed.set(iv, salt.length)
+  packed.set(cipher, salt.length + iv.length)
+  return bytesToB64(packed)
+}
+
+export async function unwrapText(wrapped: string, password: string): Promise<string> {
+  const packed = b64ToBytes(wrapped)
+  const salt = packed.slice(0, 16)
+  const iv = packed.slice(16, 28)
+  const cipher = packed.slice(28)
+  const key = await deriveKey(password, salt)
+  const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipher)
+  return decoder.decode(plain)
+}
+
 export async function openCards(passphrase: string, saltB64: string, payload: string): Promise<BankCard[]> {
   const salt = b64ToBytes(saltB64)
   const packed = b64ToBytes(payload)

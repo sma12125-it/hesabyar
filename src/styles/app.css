@@ -829,7 +829,9 @@ body,
 .settings-row { display: flex; justify-content: space-between; align-items: center; border: 0; color: inherit; font: inherit; }
 .settings-row small { display: block; color: var(--hy-text-tertiary); margin-top: 4px; }
 .desk-brand { display: none; }
-.lock-screen { min-height: 100dvh; display: grid; place-items: center; align-content: center; gap: 12px; padding: 24px; }
+.lock-screen { min-height: var(--hy-vh, 100dvh); max-height: var(--hy-vh, 100dvh); overflow: auto; display: flex; flex-direction: column; justify-content: center; gap: 12px; padding: 24px; width: min(440px, 100%); margin: 0 auto; box-sizing: border-box; }
+.lock-screen h1, .recovery-code { text-align: center; }
+.recovery-code { font-weight: 800; letter-spacing: 1px; font-size: 22px; }
 .desk-settings { display: grid; gap: 12px; }
 
 html[data-theme='dark'] {
