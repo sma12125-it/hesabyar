@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { notifyUser } from '../lib/sync'
 
 export function ConfirmSheet({
   title,
@@ -23,7 +24,9 @@ export function ConfirmSheet({
       await onConfirm()
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'انجام نشد')
+      const message = err instanceof Error ? err.message : 'انجام نشد'
+      setError(message)
+      notifyUser(message)
     } finally {
       setSaving(false)
     }

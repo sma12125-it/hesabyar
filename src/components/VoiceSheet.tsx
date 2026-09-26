@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { parseVoiceCommand } from '../lib/voice'
 import { formatRial } from '../lib/money'
+import { notifyUser } from '../lib/sync'
 import { useStore } from '../store/Store'
 
 type Rec = {
@@ -54,7 +55,9 @@ export function VoiceSheet({ onClose }: { onClose: () => void }) {
       })
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ثبت نشد')
+      const message = err instanceof Error ? err.message : 'ثبت نشد'
+      setError(message)
+      notifyUser(message)
     } finally {
       setSaving(false)
     }

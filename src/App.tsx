@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { PhoneShell } from './components/PhoneShell'
 import { TabBar } from './components/TabBar'
@@ -52,6 +52,15 @@ function Shell() {
   const [sheet, setSheet] = useState<Sheet | null>(null)
 
   const onScroll = useCallback((next: boolean) => setCompact(next), [])
+
+  useEffect(() => {
+    const onNotice = (event: Event) => {
+      const message = (event as CustomEvent<{ message?: string }>).detail?.message
+      if (message) setToast(message)
+    }
+    window.addEventListener('hy-notice', onNotice)
+    return () => window.removeEventListener('hy-notice', onNotice)
+  }, [])
 
   const isHome = location.pathname === '/'
   const isAccountsList = location.pathname === '/accounts'

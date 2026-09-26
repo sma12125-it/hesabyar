@@ -3,6 +3,7 @@ import {
   clearCloudDirty,
   cloudDirty,
   ensureSession,
+  notifyUser,
   onLocalChange,
   pullSnapshot,
   pushSnapshot,
@@ -22,6 +23,7 @@ interface Payload {
   goals: unknown
   reminders: unknown
   cardVault: unknown
+  origin?: string
 }
 
 export function LiveSync() {
@@ -36,7 +38,10 @@ export function LiveSync() {
     let closed = false
     let timer = 0
     let socket: WebSocket | null = null
-    let lastSent = 0
+    let lastSent = Number(localStorage.getItem('hy-cloud-seen') || 0)
+    let toldSignedOut = false
+    const deviceId = sessionStorage.getItem('hy-device') ?? crypto.randomUUID()
+    sessionStorage.setItem('hy-device', deviceId)
 
     async function snapshot() {
       const current = storeRef.current
@@ -53,17 +58,33 @@ export function LiveSync() {
           goals: local.goals,
           reminders: local.reminders,
           cardVault: local.cardVault,
+          origin: deviceId,
         },
       }
     }
 
     async function pushNow() {
       const session = await ensureSession()
-      if (!session || closed) return
+      if (!session || closed) {
+        if (!toldSignedOut) {
+          toldSignedOut = true
+          notifyUser('برای ذخیرهٔ زنده، از تنظیمات وارد حساب ابری شوید')
+        }
+        return
+      }
+      toldSignedOut = false
       const body = await snapshot()
-      await pushSnapshot(session, body)
+      try {
+        await pushSnapshot(session, body)
+      } catch (err) {
+        if (!navigator.onLine) throw new Error('اینترنت قطع است. تغییر روی گوشی ماند و با اتصال دوباره به ابر می‌رود')
+        throw err
+      }
       lastSent = body.updatedAt
+      localStorage.setItem('hy-cloud-seen', String(lastSent))
       clearCloudDirty()
+      lastFail = ''
+      notifyUser('روی ابر ذخیره شد')
     }
 
     async function applyRemote() {
@@ -76,7 +97,9 @@ export function LiveSync() {
       const remote = await pullSnapshot<Payload>(session)
       if (!remote || remote.updatedAt <= lastSent) return
       lastSent = remote.updatedAt
+      localStorage.setItem('hy-cloud-seen', String(lastSent))
       const data = remote.data
+      if (data?.origin === deviceId) return
       await withoutSync(async () => {
         await storeRef.current.importCloud({
           accounts: data.accounts ?? [],
@@ -88,13 +111,22 @@ export function LiveSync() {
         await extrasRef.current.importLocal(data as unknown as Record<string, unknown>)
       })
       clearCloudDirty()
+      notifyUser('از دستگاه دیگر به‌روز شد')
+    }
+
+    let lastFail = ''
+    function fail(err: unknown) {
+      const message = err instanceof Error ? err.message : 'همگام‌سازی ناموفق بود'
+      if (message === lastFail) return
+      lastFail = message
+      notifyUser(message)
     }
 
     function schedulePush() {
       window.clearTimeout(timer)
       timer = window.setTimeout(() => {
-        void pushNow().catch(() => undefined)
-      }, 350)
+        void pushNow().catch(fail)
+      }, 250)
     }
 
     function connect(session: { accessToken: string; userId: string }) {
@@ -118,8 +150,9 @@ export function LiveSync() {
         })
       }
       ws.onmessage = (message) => {
-        const frame = JSON.parse(String(message.data)) as { event?: string }
-        if (frame.event === 'postgres_changes') void applyRemote().catch(() => undefined)
+        const frame = JSON.parse(String(message.data)) as { event?: string; payload?: { status?: string } }
+        if (frame.event === 'phx_reply' && frame.payload?.status === 'error') fail(new Error('اتصال زنده به ابر برقرار نشد'))
+        if (frame.event === 'postgres_changes') void applyRemote().catch(fail)
       }
       const beat = window.setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) send('phoenix', 'heartbeat', {})
@@ -137,19 +170,25 @@ export function LiveSync() {
       connect(session)
     }
 
+    const poll = window.setInterval(() => {
+      if (!navigator.onLine) return
+      void applyRemote().catch(fail)
+    }, 2500)
+
     const stopListen = onLocalChange(schedulePush)
     const onSession = () => {
       socket?.close()
-      void start().catch(() => undefined)
+      void start().catch(fail)
     }
     const onOnline = () => {
-      void start().catch(() => undefined)
+      void start().catch(fail)
     }
     window.addEventListener('hy-cloud-session', onSession)
     window.addEventListener('online', onOnline)
-    void start()
+    void start().catch(fail)
     return () => {
       closed = true
+      window.clearInterval(poll)
       window.clearTimeout(timer)
       stopListen()
       window.removeEventListener('hy-cloud-session', onSession)

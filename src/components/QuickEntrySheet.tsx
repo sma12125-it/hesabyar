@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { categoriesFor, getCategory, isProtectedCategory } from '../lib/categories'
 import { todayIso } from '../lib/iso'
 import { formatRial } from '../lib/money'
+import { notifyUser } from '../lib/sync'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
 import { DateField } from './DateField'
@@ -86,7 +87,9 @@ export function QuickEntrySheet({
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ثبت نشد')
+      const message = err instanceof Error ? err.message : 'ثبت نشد'
+      setError(message)
+      notifyUser(message)
     } finally {
       setSaving(false)
     }
@@ -268,7 +271,9 @@ function CategoryPicker({
       await onCreate(draft)
       setDraft('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'دسته ساخته نشد')
+      const message = err instanceof Error ? err.message : 'دسته ساخته نشد'
+      setError(message)
+      notifyUser(message)
     }
   }
 
@@ -292,7 +297,9 @@ function CategoryPicker({
                     if (e.key === 'Enter') {
                       e.preventDefault()
                       void onRename(c.id, editName).then(() => setEditingId(null)).catch((err) => {
-                        setError(err instanceof Error ? err.message : 'نام ذخیره نشد')
+                        const message = err instanceof Error ? err.message : 'نام ذخیره نشد'
+                        setError(message)
+                        notifyUser(message)
                       })
                     }
                   }}
@@ -318,7 +325,9 @@ function CategoryPicker({
                   className="cat-mini danger"
                   onClick={() => {
                     void onDelete(c.id).catch((err) => {
-                      setError(err instanceof Error ? err.message : 'حذف نشد')
+                      const message = err instanceof Error ? err.message : 'حذف نشد'
+                      setError(message)
+                      notifyUser(message)
                     })
                   }}
                 >
