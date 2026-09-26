@@ -51,7 +51,6 @@ export function CardVaultSection({ onEdit }: { onEdit: (id: string) => void }) {
             {cards.map((card) => (
               <div key={card.id}>
                 <BankCardFace card={card} revealed={revealed === card.id} />
-                {card.sheba ? <div className="plan-meta">شبا {card.sheba}</div> : null}
                 {card.accountId ? <div className="plan-meta">متصل به حساب</div> : null}
                 <div className="cat-actions">
                   <button className="cat-mini" type="button" onClick={() => setRevealed(revealed === card.id ? null : card.id)}>نمایش</button>

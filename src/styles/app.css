@@ -818,6 +818,8 @@ body,
 .plastic-brand { font-size: 12px; opacity: .8; }
 .plastic-chip { width: 42px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #f8e7b0, #c9a227); }
 .plastic-pan { font-size: 20px; letter-spacing: 2px; font-weight: 700; direction: ltr; text-align: left; }
+.plastic-sheba { direction: ltr; text-align: left; font-size: 12px; font-weight: 700; letter-spacing: .3px; line-height: 1.35; overflow-wrap: anywhere; }
+.plastic-sheba small { display: block; font-size: 10px; font-weight: 500; opacity: .75; }
 .plastic-expiry { direction: ltr; text-align: left; letter-spacing: 1px; }
 .fab-row { position: absolute; bottom: calc(var(--tab-bottom-gap, 18px) + 72px); left: 50%; transform: translateX(-50%); z-index: 35; display: flex; gap: 8px; }
 .fab-row .fab-pill { position: static; transform: none; }
@@ -830,7 +832,8 @@ body,
   align-items: stretch;
 }
 .card-gallery > *, .acct-list > * { min-width: 0; }
-.card-gallery .plastic-card { width: 100%; min-width: 0; min-height: 148px; padding: 12px; }
+.card-gallery .plastic-card { width: 100%; min-width: 0; min-height: 168px; padding: 12px; }
+.card-gallery .plastic-sheba { font-size: 11px; }
 .card-gallery .plastic-pan { font-size: 16px; letter-spacing: 1px; white-space: nowrap; overflow: hidden; }
 .acct-list .swipe-wrap, .acct-list .acct-row { width: 100%; min-width: 0; height: 100%; }
 .acct-list .acct-row {
