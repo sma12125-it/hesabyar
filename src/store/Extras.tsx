@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import * as db from '../db/db'
 import { checkPasswordVerifier, generateRecoveryCode, rememberedAccountPassword } from '../lib/account'
 import { loadSession, signIn } from '../lib/sync'
@@ -45,7 +45,11 @@ const emptyReminder: ReminderSettings = { enabled: false, leadDays: 2 }
 export function ExtrasProvider({ children }: { children: ReactNode }) {
   const [blob, setBlob] = useState<VaultBlob | null>(null)
   const [passphrase, setPassphrase] = useState<string | null>(null)
+  const passphraseRef = useRef<string | null>(null)
+  passphraseRef.current = passphrase
+  const cardsRef = useRef<BankCard[]>([])
   const [cards, setCards] = useState<BankCard[]>([])
+  cardsRef.current = cards
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [goals, setGoals] = useState<SavingsGoal[]>([])
   const [reminders, setReminderState] = useState<ReminderSettings>(emptyReminder)
@@ -85,6 +89,7 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
     await db.setKv('cardVault', stored)
     setBlob(stored)
     setCards(next)
+    passphraseRef.current = phrase
     setPassphrase(phrase)
     const { notifyLocalChange } = await import('../lib/sync')
     notifyLocalChange()
@@ -112,12 +117,14 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
 
   const unlockVault = useCallback(async (phrase: string) => {
     if (!blob) {
+      passphraseRef.current = phrase
       setPassphrase(phrase)
       setCards([])
       return
     }
     const next = await openCards(phrase, blob.salt, blob.payload)
     setCards(next)
+    passphraseRef.current = phrase
     setPassphrase(phrase)
   }, [blob])
 
@@ -130,6 +137,7 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
     reminders,
     unlockVault,
     lockVault: () => {
+      passphraseRef.current = null
       setPassphrase(null)
       setCards([])
     },
@@ -182,6 +190,7 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
       await db.setKv('cardVault', stored)
       setBlob(stored)
       setCards([])
+      passphraseRef.current = trimmed
       setPassphrase(trimmed)
       const { notifyLocalChange } = await import('../lib/sync')
       notifyLocalChange()
@@ -189,6 +198,7 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
     },
     clearLocal: async () => {
       setBlob(null)
+      passphraseRef.current = null
       setPassphrase(null)
       setCards([])
       setBudgets([])
@@ -202,9 +212,9 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
     saveCard: async (input, phrase) => {
       const error = validateCard(input)
       if (error) throw new Error(error)
-      const active = passphrase ?? phrase
+      const active = passphraseRef.current ?? phrase
       if (!active) throw new Error('گاوصندوق قفل است')
-      const current = blob && passphrase == null ? await openCards(active, blob.salt, blob.payload) : cards
+      const current = blob && !passphraseRef.current ? await openCards(active, blob.salt, blob.payload) : cardsRef.current
       const existing = input.id ? current.find((card) => card.id === input.id) : undefined
       const card: BankCard = {
         ...input,
@@ -223,8 +233,9 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
       await persistCards(next, passphrase)
     },
     deleteCard: async (id, phrase) => {
-      const active = passphrase ?? phrase
-      const current = passphrase == null && blob ? await openCards(phrase, blob.salt, blob.payload) : cards
+      const active = passphraseRef.current ?? phrase
+      if (!active) throw new Error('گاوصندوق قفل است')
+      const current = !passphraseRef.current && blob ? await openCards(active, blob.salt, blob.payload) : cardsRef.current
       await persistCards(current.filter((card) => card.id !== id), active)
     },
     saveBudget: async (budget) => {
@@ -286,8 +297,22 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
         await db.setKv('reminders', data.reminders)
       }
       if (data.cardVault && typeof data.cardVault === 'object') {
-        setBlob(data.cardVault as VaultBlob)
-        await db.setKv('cardVault', data.cardVault)
+        const nextBlob = data.cardVault as VaultBlob
+        const phrase = passphraseRef.current
+        if (phrase && nextBlob.salt && nextBlob.payload) {
+          try {
+            const opened = await openCards(phrase, nextBlob.salt, nextBlob.payload)
+            setBlob(nextBlob)
+            await db.setKv('cardVault', nextBlob)
+            setCards(opened)
+            return
+          } catch {
+            /* رمز فعلی این نسخه را باز نکرد؛ گاوصندوق قفل می‌ماند */
+          }
+        }
+        setBlob(nextBlob)
+        await db.setKv('cardVault', nextBlob)
+        passphraseRef.current = null
         setPassphrase(null)
         setCards([])
       }
