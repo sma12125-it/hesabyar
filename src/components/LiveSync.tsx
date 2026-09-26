@@ -61,12 +61,16 @@ export function LiveSync() {
       const session = await ensureSession()
       if (!session || closed) return
       const body = await snapshot()
-      lastSent = body.updatedAt
       await pushSnapshot(session, body)
+      lastSent = body.updatedAt
       clearCloudDirty()
     }
 
     async function applyRemote() {
+      if (cloudDirty()) {
+        await pushNow()
+        return
+      }
       const session = await ensureSession()
       if (!session || closed) return
       const remote = await pullSnapshot<Payload>(session)
@@ -124,27 +128,32 @@ export function LiveSync() {
     }
 
     async function start() {
+      if (!navigator.onLine || closed) return
       const session = await ensureSession()
       if (!session || closed) return
-      if (cloudDirty()) await pushNow().catch(() => undefined)
-      else await applyRemote().catch(() => undefined)
+      if (cloudDirty()) await pushNow()
+      else await applyRemote()
+      socket?.close()
       connect(session)
     }
 
     const stopListen = onLocalChange(schedulePush)
     const onSession = () => {
       socket?.close()
-      void start()
+      void start().catch(() => undefined)
+    }
+    const onOnline = () => {
+      void start().catch(() => undefined)
     }
     window.addEventListener('hy-cloud-session', onSession)
-    window.addEventListener('online', schedulePush)
+    window.addEventListener('online', onOnline)
     void start()
     return () => {
       closed = true
       window.clearTimeout(timer)
       stopListen()
       window.removeEventListener('hy-cloud-session', onSession)
-      window.removeEventListener('online', schedulePush)
+      window.removeEventListener('online', onOnline)
       socket?.close()
     }
   }, [])

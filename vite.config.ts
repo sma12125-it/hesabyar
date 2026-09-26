@@ -47,12 +47,21 @@ export default defineConfig({
         }
         walk(dist, '')
         const cache = `hy-${Date.now()}`
+        const shell = '/hesabyar/index.html'
         writeFileSync(
           resolve(dist, 'sw.js'),
-          `const CACHE=${JSON.stringify(cache)};const ASSETS=${JSON.stringify(['/hesabyar/', ...files])};
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()))});
+          `const CACHE=${JSON.stringify(cache)};const ASSETS=${JSON.stringify(files)};const SHELL=${JSON.stringify(shell)};
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(async c=>{await Promise.allSettled(ASSETS.map(url=>c.add(url)));return self.skipWaiting()}))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
-self.addEventListener('fetch',e=>{const url=new URL(e.request.url);if(e.request.method!=='GET'||url.origin!==self.location.origin)return;e.respondWith(fetch(e.request).then(res=>{const copy=res.clone();caches.open(CACHE).then(c=>c.put(e.request,copy)).catch(()=>{});return res}).catch(()=>caches.match(e.request).then(hit=>hit||caches.match('/hesabyar/index.html'))))});
+self.addEventListener('fetch',e=>{
+  const url=new URL(e.request.url);
+  if(e.request.method!=='GET'||url.origin!==self.location.origin)return;
+  if(e.request.mode==='navigate'){
+    e.respondWith(fetch(e.request).then(res=>{const copy=res.clone();caches.open(CACHE).then(c=>c.put(SHELL,copy)).catch(()=>{});return res}).catch(()=>caches.match(SHELL)));
+    return;
+  }
+  e.respondWith(caches.match(e.request).then(hit=>hit||fetch(e.request).then(res=>{const copy=res.clone();caches.open(CACHE).then(c=>c.put(e.request,copy)).catch(()=>{});return res})));
+});
 `,
         )
       },
