@@ -10,13 +10,11 @@ import { BalanceHero } from '../components/BalanceHero'
 
 export function AccountsPage({
   onScroll,
-  onCreate,
 }: {
   onScroll: (compact: boolean) => void
-  onCreate: () => void
 }) {
   const { accounts, activeAccounts, totalBalance } = useStore()
-  const { unlocked, cards } = useExtras()
+  const { cards } = useExtras()
   const [cardId, setCardId] = useState<string | null | undefined>(undefined)
   const navigate = useNavigate()
   useEffect(() => {
@@ -31,10 +29,6 @@ export function AccountsPage({
     <div className="app-scroll" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
       <div className="top-row">
         <h1>حساب‌ها</h1>
-        <span className="head-actions">
-          {unlocked ? <button className="head-action" type="button" onClick={() => setCardId(null)}>ساخت کارت</button> : null}
-          <button className="head-action" type="button" onClick={onCreate}>حساب جدید</button>
-        </span>
       </div>
 
       {visible.length === 0 && archived.length === 0 ? (
@@ -42,10 +36,7 @@ export function AccountsPage({
         <div className="empty-state lg">
           <div className="empty-ico">💳</div>
           <h2>هنوز حسابی نداری</h2>
-          <p>اولین حساب نقد یا بانکی‌ات را بساز تا موجودی و تراکنش‌ها اینجا جمع شوند.</p>
-          <button className="cta-confirm" type="button" onClick={onCreate}>
-            ＋ ساخت حساب جدید
-          </button>
+          <p>با دکمه ＋ در گوشهٔ صفحه اولین حساب یا کارت را بساز.</p>
         </div>
         <CardVaultSection onEdit={(id) => setCardId(id)} />
         </>
