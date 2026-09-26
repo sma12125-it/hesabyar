@@ -314,6 +314,27 @@ button.inst-row:disabled {
   z-index: 40;
 }
 
+.sheet-front.sheet-scrim,
+.sheet-front.glass-sheet {
+  position: fixed;
+  z-index: 80;
+}
+
+.sheet-front.sheet-scrim {
+  inset: 0;
+}
+
+.sheet-front.glass-sheet {
+  z-index: 81;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  bottom: max(12px, env(safe-area-inset-bottom));
+  left: 12px;
+  width: auto;
+  max-height: none;
+  transform: none;
+}
+
 .glass-sheet.jalali-cal-sheet {
   z-index: 41;
   top: auto;

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { toJalaali } from '../lib/jalaali'
 import { validateCard } from '../lib/vault'
 import { notifyUser } from '../lib/sync'
@@ -91,10 +92,10 @@ export function CardFormSheet({ card, onClose }: { card?: BankCard; onClose: () 
     }
   }
 
-  return (
+  return createPortal(
     <>
-      <div className="sheet-scrim" onClick={onClose} />
-      <div className="glass-sheet" role="dialog" aria-label={card ? 'ویرایش کارت' : 'کارت جدید'}>
+      <div className="sheet-scrim sheet-front" onClick={onClose} />
+      <div className="glass-sheet sheet-front" role="dialog" aria-label={card ? 'ویرایش کارت' : 'کارت جدید'}>
         <div className="sheet-handle" />
         <div className="sheet-header">
           <h1>{card ? 'ویرایش کارت' : 'کارت جدید'}</h1>
@@ -154,6 +155,7 @@ export function CardFormSheet({ card, onClose }: { card?: BankCard; onClose: () 
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
