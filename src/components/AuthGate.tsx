@@ -42,7 +42,7 @@ export function AuthGate({ onUnlock }: { onUnlock: () => void }) {
   const extras = useExtras()
   const existing = loadSession()
   const [recovery] = useState(() => takeRecoveryFromUrl())
-  const [mode, setMode] = useState<Mode>(recovery ? 'renew' : existing ? 'unlock' : 'in')
+  const [mode, setMode] = useState<Mode>(recovery?.accessToken ? 'renew' : existing ? 'unlock' : 'in')
   const [recoveryToken] = useState(recovery?.accessToken ?? '')
 
   useEffect(() => {
@@ -53,7 +53,7 @@ export function AuthGate({ onUnlock }: { onUnlock: () => void }) {
   const [again, setAgain] = useState('')
   const [code, setCode] = useState('')
   const [pattern, setPattern] = useState<number[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(recovery?.error ? 'لینک بازیابی منقضی شده است. کد بازیابی را وارد کنید.' : null)
   const [info, setInfo] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const lock = loadLock()
@@ -180,7 +180,7 @@ export function AuthGate({ onUnlock }: { onUnlock: () => void }) {
     setBusy(true)
     try {
       await requestPasswordReset(email.trim())
-      setInfo('اگر این ایمیل ثبت شده باشد، لینک بازیابی برایش فرستاده می‌شود. کد بازیابی را هم اگر دارید می‌توانید همین‌جا وارد کنید.')
+      setInfo('اگر ایمیل برسد، لینکش را باز کنید. اگر صفحه خالی شد، همان کد بازیابی را در فرم زیر وارد کنید.')
       setMode('code')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ایمیل فرستاده نشد')
@@ -228,7 +228,7 @@ export function AuthGate({ onUnlock }: { onUnlock: () => void }) {
     }
   }
 
-  if (!store.ready) {
+  if (!store.ready && mode !== 'renew' && mode !== 'code') {
     return (
       <div className="lock-screen">
         <h1>حساب‌یار</h1>
@@ -254,7 +254,7 @@ export function AuthGate({ onUnlock }: { onUnlock: () => void }) {
             <button className="cat-mini" type="button" onClick={() => void useBiometric()}>ورود با اثر انگشت یا چهرهٔ گوشی</button>
           ) : null}
           {lock.patternHash ? <PatternLock value={pattern} onChange={setPattern} onRelease={(next) => void finishPattern(next)} /> : null}
-          <button className="link" type="button" onClick={() => { setError(null); setMode('forgot') }}>رمز را فراموش کرده‌ام</button>
+          <button className="link" type="button" onClick={() => { setError(null); setMode('code') }}>رمز را فراموش کرده‌ام</button>
           <button className="cat-mini danger" type="button" onClick={() => void logoutCompletely()}>خروج کامل</button>
         </>
       ) : null}
@@ -275,7 +275,7 @@ export function AuthGate({ onUnlock }: { onUnlock: () => void }) {
           {mode === 'in' ? (
             <>
               <button className="link" type="button" onClick={() => { setError(null); setMode('up') }}>حساب ندارم</button>
-              <button className="link" type="button" onClick={() => { setError(null); setMode('forgot') }}>رمز را فراموش کرده‌ام</button>
+              <button className="link" type="button" onClick={() => { setError(null); setMode('code') }}>رمز را فراموش کرده‌ام</button>
             </>
           ) : (
             <button className="link" type="button" onClick={() => { setError(null); setMode('in') }}>حساب دارم</button>
@@ -295,12 +295,13 @@ export function AuthGate({ onUnlock }: { onUnlock: () => void }) {
 
       {mode === 'code' ? (
         <div className="field-stack">
-          <p className="sheet-sub">کد بازیابی که هنگام ساخت حساب نشان داده شد، همراه رمز تازه.</p>
+          <p className="sheet-sub">کد بازیابی حساب و رمز تازه را بنویسید. لینک ایمیل اگر صفحهٔ خالی باز کرد، از همین فرم استفاده کنید.</p>
           <input className="field-input" type="email" placeholder="ایمیل" value={email} onChange={(e) => setEmail(e.target.value)} />
           <input className="field-input" placeholder="کد بازیابی" value={code} onChange={(e) => setCode(e.target.value)} />
           <input className="field-input" type="password" placeholder="رمز تازه" value={password} onChange={(e) => setPassword(e.target.value)} />
           <input className="field-input" type="password" placeholder="تکرار رمز تازه" value={again} onChange={(e) => setAgain(e.target.value)} />
           <button className="cta-confirm" type="button" disabled={busy} onClick={() => void resetWithCode()}>ثبت رمز تازه</button>
+          <button className="link" type="button" onClick={() => { setError(null); setMode('forgot') }}>ارسال لینک به ایمیل</button>
           <button className="link" type="button" onClick={() => { setError(null); setMode(existing ? 'unlock' : 'in') }}>بازگشت</button>
         </div>
       ) : null}

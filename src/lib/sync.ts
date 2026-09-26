@@ -158,7 +158,7 @@ function persianAuthError(message: string) {
 
 export async function requestPasswordReset(email: string) {
   const cfg = supabaseConfig()
-  const redirect = `${location.origin}${location.pathname}`
+  const redirect = 'https://sma12125-it.github.io/hesabyar/'
   const res = await fetch(`${cfg.url}/auth/v1/recover`, {
     method: 'POST',
     headers: { apikey: cfg.key, Authorization: `Bearer ${cfg.key}`, 'Content-Type': 'application/json' },
@@ -171,18 +171,25 @@ export async function requestPasswordReset(email: string) {
   }
 }
 
-let recoveryPeek: { accessToken: string; refreshToken?: string } | null | undefined
+let recoveryPeek: { accessToken: string; refreshToken?: string; error?: string } | null | undefined
 
-export function takeRecoveryFromUrl(): { accessToken: string; refreshToken?: string } | null {
+export function takeRecoveryFromUrl(): { accessToken: string; refreshToken?: string; error?: string } | null {
   if (recoveryPeek !== undefined) return recoveryPeek
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''))
-  const accessToken = hash.get('access_token')
-  if (hash.get('type') !== 'recovery' || !accessToken) {
-    recoveryPeek = null
-    return null
+  const query = new URLSearchParams(window.location.search)
+  const accessToken = hash.get('access_token') || ''
+  const type = hash.get('type') || query.get('type')
+  const error = hash.get('error_description') || query.get('error_description') || ''
+  if (type === 'recovery' && accessToken) {
+    recoveryPeek = { accessToken, refreshToken: hash.get('refresh_token') || undefined }
+    return recoveryPeek
   }
-  recoveryPeek = { accessToken, refreshToken: hash.get('refresh_token') || undefined }
-  return recoveryPeek
+  if (error) {
+    recoveryPeek = { accessToken: '', error }
+    return recoveryPeek
+  }
+  recoveryPeek = null
+  return null
 }
 
 export function clearRecoveryFromUrl() {
