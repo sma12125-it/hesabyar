@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatRial, validateAccountName } from '../lib/money'
+import { notifyUser } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
@@ -50,7 +51,9 @@ export function AccountFormSheet({
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره نشد')
+      const message = err instanceof Error ? err.message : 'ذخیره نشد'
+      setError(message)
+      notifyUser(message)
     } finally {
       setSaving(false)
     }

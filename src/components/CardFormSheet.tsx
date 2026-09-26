@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { toJalaali } from '../lib/jalaali'
 import { validateCard } from '../lib/vault'
+import { notifyUser } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 import type { BankCard } from '../types'
 
@@ -84,7 +85,9 @@ export function CardFormSheet({ card, onClose }: { card?: BankCard; onClose: () 
       await saveCard({ id: card?.id, bankName, holder, pan: pan.replace(/\D/g, ''), expiry, cvv, sheba, note: card?.note ?? '', color })
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'کارت ذخیره نشد')
+      const message = err instanceof Error ? err.message : 'کارت ذخیره نشد'
+      setError(message)
+      notifyUser(message)
     }
   }
 

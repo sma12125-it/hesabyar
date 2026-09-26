@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { formatRial } from '../lib/money'
 import { todayIso } from '../lib/iso'
+import { notifyUser } from '../lib/sync'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
 import { DateField } from './DateField'
@@ -71,7 +72,9 @@ export function TransferSheet({
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'انتقال نشد')
+      const message = err instanceof Error ? err.message : 'انتقال نشد'
+      setError(message)
+      notifyUser(message)
     } finally {
       setSaving(false)
     }

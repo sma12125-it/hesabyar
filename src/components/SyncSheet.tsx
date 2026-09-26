@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { loadSession, pullSnapshot, pushSnapshot, saveSession, signIn, signUp, type CloudSession } from '../lib/sync'
+import { ensureSession, loadSession, notifyUser, pullSnapshot, pushSnapshot, saveSession, signIn, signUp, type CloudSession } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 import { useStore } from '../store/Store'
 
@@ -48,8 +48,11 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
       saveSession(next)
       setSession(next)
       setInfo(mode === 'up' ? 'حساب ساخته شد' : 'وارد شدید')
+      notifyUser(mode === 'up' ? 'حساب ابری ساخته شد' : 'وارد حساب ابری شدید')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'خطای ابر')
+      const message = err instanceof Error ? err.message : 'خطای ابر'
+      setError(message)
+      notifyUser(message)
     }
   }
 
@@ -58,10 +61,15 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
     setError(null)
     try {
       const data = await payload()
-      await pushSnapshot(session, { updatedAt: data.updatedAt, data })
+      const active = await ensureSession()
+      if (!active) throw new Error('برای ذخیرهٔ زنده، از تنظیمات وارد حساب ابری شوید')
+      await pushSnapshot(active, { updatedAt: data.updatedAt, data })
       setInfo('داده روی Supabase ذخیره شد')
+      notifyUser('روی ابر ذخیره شد')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ارسال نشد')
+      const message = err instanceof Error ? err.message : 'ارسال نشد'
+      setError(message)
+      notifyUser(message)
     }
   }
 
@@ -69,7 +77,9 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
     if (!session) return
     setError(null)
     try {
-      const remote = await pullSnapshot<Payload>(session)
+      const active = await ensureSession()
+      if (!active) throw new Error('برای ذخیرهٔ زنده، از تنظیمات وارد حساب ابری شوید')
+      const remote = await pullSnapshot<Payload>(active)
       if (!remote) {
         setInfo('روی ابر هنوز داده‌ای نیست')
         return
@@ -86,7 +96,9 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
       await extras.importLocal(data as unknown as Record<string, unknown>)
       window.location.reload()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'دریافت نشد')
+      const message = err instanceof Error ? err.message : 'دریافت نشد'
+      setError(message)
+      notifyUser(message)
     }
   }
 
@@ -102,7 +114,7 @@ export function SyncSheet({ onClose }: { onClose: () => void }) {
         <p className="sheet-sub">بعد از ورود، هر تراکنش خودش روی ابر ذخیره می‌شود و دستگاه‌های دیگر همین حساب همان لحظه به‌روز می‌شوند.</p>
         {error ? <div className="banner error"><span>{error}</span></div> : null}
         {info ? <p className="sheet-sub">{info}</p> : null}
-        <p className="sheet-sub">{session ? `متصل: ${session.email}` : 'با ایمیل وارد شوید. آخرین نوشتن برنده است.'}</p>
+        <p className="sheet-sub">{session ? `متصل: ${session.email}` : 'با ایمیل وارد شوید. بعد از ورود، ارسال و دریافت خودکار است.'}</p>
             {!session ? (
               <div className="field-stack">
                 <input className="field-input" type="email" placeholder="ایمیل" value={email} onChange={(e) => setEmail(e.target.value)} />

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { AmountField } from './AmountField'
 import { DateField } from './DateField'
 import { formatRial } from '../lib/money'
+import { notifyUser } from '../lib/sync'
 import { useStore } from '../store/Store'
 import type { InstallmentItem } from '../types'
 
@@ -25,7 +26,9 @@ export function InstallmentItemSheet({
       await updateInstallmentItem(item.id, { amount, dueDate })
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره نشد')
+      const message = err instanceof Error ? err.message : 'ذخیره نشد'
+      setError(message)
+      notifyUser(message)
     } finally {
       setSaving(false)
     }

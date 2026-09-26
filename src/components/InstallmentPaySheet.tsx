@@ -3,6 +3,7 @@ import { INSTALLMENT_CATEGORY_ID, getCategory } from '../lib/categories'
 import { formatPersianDate } from '../lib/dates'
 import { defaultPayNote } from '../lib/installments'
 import { formatRial } from '../lib/money'
+import { notifyUser } from '../lib/sync'
 import { useStore } from '../store/Store'
 import { PickerSheet } from './PickerSheet'
 import type { InstallmentItem, InstallmentPlan } from '../types'
@@ -37,7 +38,9 @@ export function InstallmentPaySheet({
       await payInstallment(item.id, accountId, note)
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'پرداخت نشد')
+      const message = err instanceof Error ? err.message : 'پرداخت نشد'
+      setError(message)
+      notifyUser(message)
     } finally {
       setSaving(false)
     }

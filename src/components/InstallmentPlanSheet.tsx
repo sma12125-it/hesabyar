@@ -6,6 +6,7 @@ import { todayIso } from '../lib/iso'
 import { tryLoanSchedule } from '../lib/loan'
 import { formatRial, parseDecimalInput, parseRialInput, toFaDigits } from '../lib/money'
 import { planHasPayment, validatePlanInput, validatePlanUpdate } from '../lib/installments'
+import { notifyUser } from '../lib/sync'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
 import { PickerSheet } from './PickerSheet'
@@ -103,7 +104,9 @@ export function InstallmentPlanSheet({
       }
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ذخیره نشد')
+      const message = err instanceof Error ? err.message : 'ذخیره نشد'
+      setError(message)
+      notifyUser(message)
     } finally {
       setSaving(false)
     }

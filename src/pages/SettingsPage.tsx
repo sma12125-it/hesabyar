@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { PatternLock } from '../components/PatternLock'
 import { SyncSheet } from '../components/SyncSheet'
 import { loadLock, registerBiometric, setPattern, setPin, type AppLockRecord } from '../lib/applock'
+import { notifyUser } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 
 type Popup = 'cloud' | 'security' | 'vault' | null
@@ -127,7 +128,9 @@ function VaultPopup({ onClose }: { onClose: () => void }) {
       setNext('')
       setAgain('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'رمز ذخیره نشد')
+      const message = err instanceof Error ? err.message : 'رمز ذخیره نشد'
+      setError(message)
+      notifyUser(message)
     }
   }
 

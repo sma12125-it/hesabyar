@@ -66,10 +66,15 @@ export function clearCloudDirty() {
   localStorage.removeItem('hy-cloud-dirty')
 }
 
+export function notifyUser(message: string) {
+  window.dispatchEvent(new CustomEvent('hy-notice', { detail: { message } }))
+}
+
 export async function ensureSession(): Promise<CloudSession | null> {
   const session = loadSession()
   if (!session) return null
-  if (!session.refreshToken || !session.expiresAt || session.expiresAt * 1000 - Date.now() > 60_000) return session
+  if (session.refreshToken && session.expiresAt && session.expiresAt * 1000 - Date.now() > 60_000) return session
+  if (!session.refreshToken) return session
   const cfg = supabaseConfig()
   const res = await fetch(`${cfg.url}/auth/v1/token?grant_type=refresh_token`, {
     method: 'POST',
@@ -78,12 +83,15 @@ export async function ensureSession(): Promise<CloudSession | null> {
   })
   const json = await readJson(res)
   const accessToken = typeof json.access_token === 'string' ? json.access_token : ''
-  if (!res.ok || !accessToken) return session
+  if (!res.ok || !accessToken) {
+    saveSession(null)
+    throw new Error('نشست ابری تمام شد. دوباره از تنظیمات وارد شوید')
+  }
   const next: CloudSession = {
     ...session,
     accessToken,
     refreshToken: typeof json.refresh_token === 'string' ? json.refresh_token : session.refreshToken,
-    expiresAt: typeof json.expires_at === 'number' ? json.expires_at : session.expiresAt,
+    expiresAt: expiryFrom(json, session.expiresAt),
   }
   saveSession(next)
   return next
@@ -119,10 +127,16 @@ async function authRequest(path: string, body: unknown): Promise<CloudSession> {
   return {
     accessToken,
     refreshToken: typeof json.refresh_token === 'string' ? json.refresh_token : undefined,
-    expiresAt: typeof json.expires_at === 'number' ? json.expires_at : undefined,
+    expiresAt: expiryFrom(json),
     userId: user.id,
     email: user.email ?? '',
   }
+}
+
+function expiryFrom(json: Record<string, unknown>, fallback?: number) {
+  if (typeof json.expires_at === 'number') return json.expires_at
+  if (typeof json.expires_in === 'number') return Math.floor(Date.now() / 1000) + json.expires_in
+  return fallback
 }
 
 export function signUp(email: string, password: string) {
@@ -145,7 +159,14 @@ export async function pushSnapshot<T>(session: CloudSession, snapshot: CloudSnap
     },
     body: JSON.stringify({ user_id: session.userId, updated_at: new Date(snapshot.updatedAt).toISOString(), payload: snapshot.data }),
   })
-  if (!res.ok) throw new Error('ارسال به ابر ناموفق بود')
+  if (!res.ok) {
+    const text = await res.text()
+    if (res.status === 401) {
+      saveSession(null)
+      throw new Error('نشست ابری تمام شد. دوباره از تنظیمات وارد شوید')
+    }
+    throw new Error(text.replace(/<[^>]+>/g, '').slice(0, 160) || 'ارسال به ابر ناموفق بود')
+  }
 }
 
 export async function pullSnapshot<T>(session: CloudSession): Promise<CloudSnapshot<T> | null> {
@@ -153,7 +174,13 @@ export async function pullSnapshot<T>(session: CloudSession): Promise<CloudSnaps
   const res = await fetch(`${cfg.url}/rest/v1/snapshots?user_id=eq.${session.userId}&select=updated_at,payload`, {
     headers: { apikey: cfg.key, Authorization: `Bearer ${session.accessToken}` },
   })
-  if (!res.ok) throw new Error('دریافت از ابر ناموفق بود')
+  if (!res.ok) {
+    if (res.status === 401) {
+      saveSession(null)
+      throw new Error('نشست ابری تمام شد. دوباره از تنظیمات وارد شوید')
+    }
+    throw new Error('دریافت از ابر ناموفق بود')
+  }
   const rows = (await res.json()) as Array<{ updated_at: string; payload: T }>
   const row = rows[0]
   if (!row) return null
