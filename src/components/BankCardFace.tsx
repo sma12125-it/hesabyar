@@ -7,6 +7,13 @@ export function formatExpiry(expiry: string): string {
   return `${year}   ${month}`
 }
 
+export function formatSheba(sheba: string): string {
+  const raw = sheba.replace(/\s/g, '').toUpperCase()
+  const body = raw.startsWith('IR') ? raw.slice(2) : raw
+  const groups = body.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+  return groups ? `IR ${groups}` : raw
+}
+
 export function formatPan(pan: string, revealed: boolean): string {
   const digits = pan.replace(/\D/g, '')
   const shown = revealed ? digits : maskPan(digits).replace('•••• ', '')
@@ -23,6 +30,12 @@ export function BankCardFace({ card, revealed = false }: { card: BankCard; revea
       </div>
       <div className="plastic-chip" aria-hidden="true" />
       <div className="plastic-pan">{formatPan(card.pan, revealed)}</div>
+      {card.sheba ? (
+        <div className="plastic-sheba" dir="ltr">
+          <small>شبا</small>
+          {formatSheba(card.sheba)}
+        </div>
+      ) : null}
       <div className="plastic-bottom">
         <span>
           <small>صاحب کارت</small>
