@@ -99,18 +99,58 @@ button.field-chip {
 .field-chip {
   width: 100%;
   text-align: right;
-  border: 0.5px solid rgba(255, 255, 255, 0.55);
+  border: 1.5px solid rgba(13, 148, 136, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
-.field-input {
+.field-chip:focus-within {
+  border-color: var(--hy-teal);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 0 0 3px rgba(13, 148, 136, 0.16);
+}
+
+.field-input,
+.expiry-row select {
   width: 100%;
-  border: none;
-  background: transparent;
+  box-sizing: border-box;
+  border: 1.5px solid rgba(13, 148, 136, 0.55);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(240, 253, 250, 0.72));
   outline: none;
   font-size: 14px;
   font-weight: 600;
   color: var(--hy-text);
+  padding: 12px 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 8px 18px rgba(15, 118, 110, 0.05);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field-input:focus,
+.expiry-row select:focus {
+  border-color: var(--hy-teal);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 0 0 3px rgba(13, 148, 136, 0.18);
+}
+
+.field-chip .field-input,
+.amount-input {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   padding: 0;
+}
+
+textarea.field-input {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.6;
 }
 
 .field-input::placeholder {
@@ -821,7 +861,7 @@ body,
 .net-lamp.is-off { background: #dc2626; }
 .expiry-row, .sheba-row, .swatch-row { display: flex; gap: 8px; align-items: center; }
 .expiry-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; flex: 1; }
-.expiry-row select, .sheba-row .field-input { width: 100%; font: inherit; padding: 8px; border-radius: 12px; border: 0.5px solid rgba(255,255,255,.6); background: rgba(255,255,255,.4); }
+.expiry-row select, .sheba-row .field-input { width: 100%; font: inherit; }
 .sheba-row span { font-weight: 800; letter-spacing: 1px; }
 .swatch { width: 36px; height: 36px; border-radius: 50%; border: 2px solid transparent; }
 .swatch.on { border-color: #fff; box-shadow: 0 0 0 2px var(--hy-teal); }
@@ -846,6 +886,34 @@ html[data-theme='dark'] {
 html[data-theme='dark'] body,
 html[data-theme='dark'] .wallpaper {
   background: #0b1220;
+}
+
+html[data-theme='dark'] .field-input,
+html[data-theme='dark'] .expiry-row select {
+  background: linear-gradient(165deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.4));
+  border-color: rgba(45, 212, 191, 0.4);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 8px 18px rgba(0, 0, 0, 0.22);
+}
+
+html[data-theme='dark'] .field-input:focus,
+html[data-theme='dark'] .expiry-row select:focus {
+  border-color: #2dd4bf;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 0 0 3px rgba(45, 212, 191, 0.2);
+}
+
+html[data-theme='dark'] .field-chip {
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+html[data-theme='dark'] .field-chip .field-input,
+html[data-theme='dark'] .amount-input {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 @media (min-width: 1100px) {
