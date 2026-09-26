@@ -9,6 +9,7 @@ import {
   deletePlanCascade,
   deleteTransactionCascade,
   nextPlanStatus,
+  unpayInstallmentItem,
   patchToWrites,
   type AppData,
 } from '../lib/cascade'
@@ -75,6 +76,7 @@ interface StoreValue {
   deleteInstallmentPlan: (id: string) => Promise<void>
   deleteInstallmentItem: (id: string) => Promise<void>
   payInstallment: (itemId: string, accountId: string, note?: string) => Promise<void>
+  unpayInstallment: (itemId: string) => Promise<void>
   resetDemo: () => Promise<void>
   wipeAll: () => Promise<void>
   createCategory: (kind: 'expense' | 'income', name: string) => Promise<Category>
@@ -580,6 +582,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })
   }, [persistSnapshot])
 
+  const unpayInstallment = useCallback(async (itemId: string) => {
+    const prev = dataRef.current
+    await persistSnapshot(prev, unpayInstallmentItem(itemId, prev))
+  }, [persistSnapshot])
+
   const resetDemo = useCallback(async () => {
     const demo = demoDataset()
     await db.replaceAllData(demo.accounts, demo.transactions, demo.plans, demo.items)
@@ -685,6 +692,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteInstallmentPlan,
       deleteInstallmentItem,
       payInstallment,
+      unpayInstallment,
       resetDemo,
       wipeAll,
       createCategory,
@@ -720,6 +728,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteInstallmentPlan,
       deleteInstallmentItem,
       payInstallment,
+      unpayInstallment,
       resetDemo,
       wipeAll,
       createCategory,

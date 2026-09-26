@@ -295,7 +295,8 @@ textarea.field-input {
 }
 
 button.plan-card,
-button.inst-row {
+button.inst-row,
+div.inst-row {
   width: 100%;
   font-family: inherit;
   appearance: none;
@@ -306,6 +307,34 @@ button.inst-row {
 
 button.inst-row:disabled {
   cursor: default;
+}
+
+.inst-unpay {
+  display: inline-flex;
+  margin-top: 6px;
+}
+
+.archive-entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 0.5px solid rgba(255, 255, 255, 0.62);
+  border-radius: 18px;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.16));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(16px);
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+}
+
+.archive-entry .plan-meta {
+  font-weight: 600;
 }
 
 .field-chip {
@@ -564,16 +593,51 @@ button.inst-row:disabled {
 
 .sheet-footer {
   flex-shrink: 0;
-  position: sticky;
-  bottom: 0;
+  position: relative;
   z-index: 4;
   padding: 10px 0 calc(12px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, rgba(250, 251, 252, 0), rgba(250, 251, 252, 0.92) 28%);
 }
 
+.sheet-handle,
+.sheet-header {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 4;
+}
+
+/* Blur stays on the decorative layer. iOS will not scroll a box that has
+   backdrop-filter, or a box inside one, so the form scroller is a sibling. */
+.glass-sheet.sheet-sticky-cta {
+  overflow: hidden;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.glass-sheet.sheet-sticky-cta::before {
+  backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-strong));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sheet)) saturate(var(--glass-saturate-strong));
+}
+
+.sheet-sticky-cta .sheet-body-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
 .sheet-sticky-cta .cta-confirm {
   margin-top: 0;
   width: 100%;
+}
+
+.voice-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .link.show-all {
@@ -1133,6 +1197,20 @@ html[data-theme='dark'] .amount-input {
   background: transparent;
   border: none;
   box-shadow: none;
+}
+
+html[data-theme='dark'] .sheet-sticky-cta .sheet-header {
+  background: linear-gradient(180deg, rgba(11, 18, 32, 0.96), rgba(11, 18, 32, 0.72) 70%, transparent);
+}
+
+html[data-theme='dark'] .sheet-footer {
+  background: linear-gradient(180deg, transparent, rgba(11, 18, 32, 0.94) 28%);
+}
+
+html[data-theme='dark'] .archive-entry {
+  background: linear-gradient(165deg, rgba(15, 23, 42, 0.72), rgba(15, 23, 42, 0.4));
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 html[data-theme='dark'] .corner-scrim {

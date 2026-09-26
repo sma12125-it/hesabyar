@@ -5,6 +5,7 @@ import {
   deleteInstallmentItemCascade,
   deletePlanCascade,
   deleteTransactionCascade,
+  unpayInstallmentItem,
 } from '../lib/cascade'
 import { generateInstallmentItems } from '../lib/installments'
 import type { Account, InstallmentPlan, Transaction } from '../types'
@@ -113,6 +114,45 @@ describe('delete cascading', () => {
     expect(unpaid.transactionId).toBeUndefined()
     expect(next.plans[0]?.status).toBe('active')
     expect(next.items).toHaveLength(2)
+    expect(computeBalance(from.openingBalance, next.transactions, 'a')).toBe(100_000)
+  })
+
+  it('unpaying a finished plan returns the installment and moves the plan back to active', () => {
+    const plan: InstallmentPlan = {
+      id: 'p',
+      name: 'وام',
+      installmentAmount: 5_000,
+      totalCount: 1,
+      startDate: '2026-09-15',
+      defaultAccountId: 'a',
+      categoryId: 'installments',
+      status: 'completed',
+      createdAt: 1,
+      updatedAt: 1,
+    }
+    const items = generateInstallmentItems('p', 5_000, 1, '2026-09-15')
+    const expense = tx({
+      id: 'pay',
+      kind: 'expense',
+      amount: 5_000,
+      accountId: 'a',
+      categoryId: 'installments',
+      installmentItemId: items[0]!.id,
+    })
+    items[0]!.status = 'paid'
+    items[0]!.transactionId = expense.id
+    items[0]!.paidAt = '2026-09-15'
+    const data = {
+      accounts: [from],
+      transactions: [expense],
+      plans: [plan],
+      items,
+    }
+    const next = unpayInstallmentItem(items[0]!.id, data, '2026-09-15')
+    expect(next.items[0]?.status).toBe('pending')
+    expect(next.items[0]?.transactionId).toBeUndefined()
+    expect(next.transactions).toHaveLength(0)
+    expect(next.plans[0]?.status).toBe('active')
     expect(computeBalance(from.openingBalance, next.transactions, 'a')).toBe(100_000)
   })
 

@@ -9,6 +9,7 @@ export interface UiActions {
   deletePlan: (id: string) => void
   editItem: (id: string) => void
   deleteItem: (id: string) => void
+  unpayItem: (id: string) => void
 }
 
 export const UiActionsContext = createContext<UiActions | null>(null)

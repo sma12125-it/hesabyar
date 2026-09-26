@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { INSTALLMENT_CATEGORY_ID, getCategory } from '../lib/categories'
 import { formatPersianDateFull } from '../lib/dates'
 import { DateField } from './DateField'
@@ -6,6 +6,7 @@ import { todayIso } from '../lib/iso'
 import { tryLoanSchedule } from '../lib/loan'
 import { formatRial, parseDecimalInput, parseRialInput, toFaDigits } from '../lib/money'
 import { planHasPayment, validatePlanInput, validatePlanUpdate } from '../lib/installments'
+import { useScrollFocusedIntoView } from '../lib/keyboardInset'
 import { notifyUser } from '../lib/sync'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
@@ -33,27 +34,13 @@ export function InstallmentPlanSheet({
   const [picker, setPicker] = useState<'account' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  const [keyboardInset, setKeyboardInset] = useState(0)
+  useScrollFocusedIntoView()
 
   const account = activeAccounts.find((a) => a.id === accountId)
   const rate = parseDecimalInput(rateRaw)
   const count = parseRialInput(countRaw)
   const category = getCategory(INSTALLMENT_CATEGORY_ID)
   const activeCount = plans.filter((p) => p.status === 'active').length
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-    const update = () => {
-      setKeyboardInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
-    }
-    vv.addEventListener('resize', update)
-    vv.addEventListener('scroll', update)
-    update()
-    return () => {
-      vv.removeEventListener('resize', update)
-      vv.removeEventListener('scroll', update)
-    }
-  }, [])
 
   const schedule = useMemo(
     () => (kind === 'loan' && principal > 0 && count > 0 ? tryLoanSchedule(principal, rate, count) : null),
@@ -165,7 +152,6 @@ export function InstallmentPlanSheet({
         className="glass-sheet sheet-sticky-cta"
         role="dialog"
         aria-label={plan ? 'ویرایش برنامه' : 'برنامه جدید'}
-        style={keyboardInset > 0 ? { bottom: keyboardInset } : undefined}
       >
         <div className="sheet-handle" />
         <div className="sheet-header">

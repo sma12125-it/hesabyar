@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { categoriesFor, getCategory, isProtectedCategory } from '../lib/categories'
 import { todayIso } from '../lib/iso'
 import { formatRial } from '../lib/money'
+import { useScrollFocusedIntoView } from '../lib/keyboardInset'
 import { notifyUser } from '../lib/sync'
 import { useStore } from '../store/Store'
 import { AmountField } from './AmountField'
@@ -37,7 +38,9 @@ export function QuickEntrySheet({
   const [picker, setPicker] = useState<'category' | 'account' | 'note' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  useScrollFocusedIntoView()
   const linked = Boolean(transaction?.installmentItemId)
+  const coarsePointer = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
 
   const cats = useMemo(() => categoriesFor(kind, customCategories), [kind, customCategories])
   const category = getCategory(categoryId, customCategories) ?? cats[0]
@@ -147,7 +150,11 @@ export function QuickEntrySheet({
         <div className="ph-amt">{formatRial(totalBalance)} ریال</div>
       </div>
       <div className="sheet-scrim" onClick={onClose} />
-      <div className="glass-sheet" role="dialog" aria-label="ثبت سریع">
+      <div
+        className="glass-sheet sheet-sticky-cta"
+        role="dialog"
+        aria-label="ثبت سریع"
+      >
         <div className="sheet-handle" />
         <div className="sheet-header">
           <h1>{isEdit ? 'ویرایش تراکنش' : 'ثبت سریع'}</h1>
@@ -156,6 +163,7 @@ export function QuickEntrySheet({
           </button>
         </div>
 
+        <div className="sheet-body-scroll">
         <div className="seg" role="tablist" aria-label="نوع تراکنش">
           <div className={`seg-thumb${kind === 'income' ? ' income' : ''}`} aria-hidden="true" />
           <button
@@ -182,7 +190,7 @@ export function QuickEntrySheet({
           variant="hero"
           value={amount}
           onChange={setAmount}
-          autoFocus
+          autoFocus={!coarsePointer}
           caret={kind === 'income' ? 'income' : 'expense'}
           ariaLabel="مبلغ به ریال"
         />
@@ -234,10 +242,13 @@ export function QuickEntrySheet({
             <span className="fchev">‹</span>
           </button>
         </div>
+        </div>
 
-        <button className={`cta-confirm${disabled ? ' disabled' : ''}`} type="button" onClick={() => void submit()} disabled={disabled}>
-          {saving ? 'در حال ثبت…' : isEdit ? 'ذخیره تغییرات' : 'تأیید و ثبت'}
-        </button>
+        <div className="sheet-footer">
+          <button className={`cta-confirm${disabled ? ' disabled' : ''}`} type="button" onClick={() => void submit()} disabled={disabled}>
+            {saving ? 'در حال ثبت…' : isEdit ? 'ذخیره تغییرات' : 'تأیید و ثبت'}
+          </button>
+        </div>
       </div>
     </>
   )
