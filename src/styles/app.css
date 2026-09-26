@@ -78,6 +78,8 @@ a.tab {
 .icon-btn,
 .mic-fab,
 .fab-pill,
+.corner-add-btn,
+.corner-menu button,
 .cta-confirm,
 .seg-btn,
 .option-item,
@@ -818,6 +820,11 @@ body,
     left: auto;
     right: 28px;
   }
+
+  .corner-add {
+    bottom: 22px;
+    left: 28px;
+  }
 }
 
 .plastic-card {
@@ -844,6 +851,190 @@ body,
 .plastic-expiry { direction: ltr; text-align: left; letter-spacing: 1px; }
 .fab-row { position: absolute; bottom: calc(var(--tab-bottom-gap, 18px) + 72px); left: 50%; transform: translateX(-50%); z-index: 35; display: flex; gap: 8px; }
 .fab-row .fab-pill { position: static; transform: none; }
+
+.corner-add {
+  position: absolute;
+  z-index: 45;
+  left: 16px;
+  bottom: calc(var(--tab-bottom-gap, 18px) + 76px);
+  width: 56px;
+  height: 56px;
+}
+.corner-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  cursor: default;
+  transition: opacity 0.28s ease;
+}
+.corner-add.is-open .corner-scrim {
+  opacity: 1;
+  pointer-events: auto;
+}
+.corner-menu,
+.corner-add-btn { position: relative; z-index: 1; }
+.corner-add-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 0.5px solid rgba(255, 255, 255, 0.78);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background:
+    linear-gradient(165deg, rgba(255, 255, 255, 0.48) 0%, rgba(255, 255, 255, 0.05) 42%, transparent 43%),
+    linear-gradient(160deg, rgba(45, 212, 191, 0.96) 0%, rgba(13, 148, 136, 0.92) 52%, rgba(15, 118, 110, 0.96) 100%);
+  box-shadow:
+    0 12px 28px rgba(13, 148, 136, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -10px 16px rgba(15, 118, 110, 0.28);
+  backdrop-filter: blur(16px) saturate(160%);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.28s ease;
+}
+.corner-add-btn::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 16%;
+  right: 16%;
+  height: 40%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), transparent);
+  pointer-events: none;
+}
+.corner-add-btn:active { transform: scale(0.94); }
+.corner-plus {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.corner-plus::before,
+.corner-plus::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 2px;
+  background: #fff;
+  transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.corner-plus::before {
+  width: 18px;
+  height: 2.5px;
+  transform: translate(-50%, -50%);
+}
+.corner-plus::after {
+  width: 2.5px;
+  height: 18px;
+  transform: translate(-50%, -50%);
+}
+.corner-add.is-open .corner-plus::before,
+.corner-add.is-open .corner-plus::after {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.corner-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 188px;
+  padding: 8px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.18));
+  border: 0.5px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 18px 40px rgba(15, 23, 42, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  transform-origin: 28px 100%;
+  opacity: 0;
+  transform: translateY(10px) scale(0.86);
+  pointer-events: none;
+  overflow: hidden;
+  transition: opacity 0.2s ease, transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.corner-menu::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 40% at 20% 0%, rgba(255, 255, 255, 0.7), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, transparent 42%);
+}
+.corner-add.is-open .corner-menu {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.corner-menu button {
+  height: 46px;
+  border: 0.5px solid rgba(255, 255, 255, 0.45);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.28);
+  color: var(--hy-text, #0f172a);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  direction: rtl;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 10px;
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.22s ease,
+    transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background 0.16s ease;
+}
+.corner-add.is-open .corner-menu button {
+  opacity: 1;
+  transform: none;
+}
+.corner-add.is-open .corner-menu button:nth-child(1) { transition-delay: 0.05s; }
+.corner-add.is-open .corner-menu button:nth-child(2) { transition-delay: 0.1s; }
+.corner-item-ico {
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  flex: none;
+  color: #0f766e;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.82), rgba(45, 212, 191, 0.28));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+.corner-menu button:hover,
+.corner-menu button:active {
+  background: rgba(255, 255, 255, 0.55);
+}
+@media (prefers-reduced-motion: reduce) {
+  .corner-scrim,
+  .corner-menu,
+  .corner-menu button,
+  .corner-add-btn,
+  .corner-plus::before,
+  .corner-plus::after {
+    transition: none;
+  }
+}
 .head-actions { display: none; gap: 8px; }
 .plastic-bottom small { display: block; font-size: 10px; opacity: .75; }
 .card-gallery, .acct-list {
@@ -942,6 +1133,35 @@ html[data-theme='dark'] .amount-input {
   background: transparent;
   border: none;
   box-shadow: none;
+}
+
+html[data-theme='dark'] .corner-scrim {
+  background: rgba(2, 6, 23, 0.38);
+}
+
+html[data-theme='dark'] .corner-menu {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.5));
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme='dark'] .corner-menu button {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme='dark'] .corner-menu button:hover,
+html[data-theme='dark'] .corner-menu button:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html[data-theme='dark'] .corner-item-ico {
+  color: #5eead4;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.14), rgba(13, 148, 136, 0.32));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 @media (min-width: 1100px) {

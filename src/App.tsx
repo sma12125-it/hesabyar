@@ -45,10 +45,11 @@ export type Sheet =
 function Shell() {
   const location = useLocation()
   const { ready, error, totalBalance, accounts, transactions, plans, items, resetDemo, wipeAll, deleteTransaction, deleteAccount, deleteInstallmentPlan, deleteInstallmentItem } = useStore()
-  const { unlocked: vaultOpen } = useExtras()
+  const { unlocked: vaultOpen, vaultConfigured } = useExtras()
   const [compact, setCompact] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [sheet, setSheet] = useState<Sheet | null>(null)
+  const [addOpen, setAddOpen] = useState(false)
 
   const onScroll = useCallback((next: boolean) => setCompact(next), [])
 
@@ -61,11 +62,14 @@ function Shell() {
     return () => window.removeEventListener('hy-notice', onNotice)
   }, [])
 
+  useEffect(() => {
+    setAddOpen(false)
+  }, [location.pathname, sheet])
+
   const isHome = location.pathname === '/'
   const isAccountsList = location.pathname === '/accounts'
   const isInstallmentsList = location.pathname === '/installments'
   const sheetOpen = sheet !== null
-  const hasVisibleAccounts = accounts.some((a) => !a.archived)
   const hasPlans = plans.length > 0
   const editingAccount =
     sheet?.type === 'account' && sheet.accountId
@@ -180,7 +184,7 @@ function Shell() {
           />
           <Route
             path="/accounts"
-            element={<AccountsPage onScroll={onScroll} onCreate={() => setSheet({ type: 'account' })} />}
+            element={<AccountsPage onScroll={onScroll} />}
           />
           <Route path="/accounts/:id" element={<AccountDetailRoute onScroll={onScroll} setSheet={setSheet} />} />
           <Route
@@ -218,18 +222,63 @@ function Shell() {
           </button>
         ) : null}
 
-        {!sheetOpen && isAccountsList && (hasVisibleAccounts || vaultOpen) ? (
-          <div className="fab-row">
-            {vaultOpen ? (
-              <button className="fab-pill" type="button" onClick={() => window.dispatchEvent(new Event('hy-new-card'))}>
-                <span>＋</span> ساخت کارت
+        {!sheetOpen && isAccountsList ? (
+          <div className={`corner-add${addOpen ? ' is-open' : ''}`}>
+            <button
+              className="corner-scrim"
+              type="button"
+              aria-label="بستن منو"
+              inert={!addOpen}
+              onClick={() => setAddOpen(false)}
+            />
+            <div className="corner-menu" role="menu" aria-hidden={!addOpen} inert={!addOpen}>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAddOpen(false)
+                  if (vaultOpen) {
+                    window.dispatchEvent(new Event('hy-new-card'))
+                    return
+                  }
+                  setToast(vaultConfigured ? 'اول گاوصندوق را باز کنید' : 'اول رمز گاوصندوق را در تنظیمات مشخص کنید')
+                }}
+              >
+                <span className="corner-item-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <rect x="3" y="5" width="18" height="14" rx="3" />
+                    <path d="M3 10h18" />
+                  </svg>
+                </span>
+                <span>ساخت کارت</span>
               </button>
-            ) : null}
-            {hasVisibleAccounts ? (
-              <button className="fab-pill" type="button" onClick={() => setSheet({ type: 'account' })}>
-                <span>＋</span> حساب جدید
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setAddOpen(false)
+                  setSheet({ type: 'account' })
+                }}
+              >
+                <span className="corner-item-ico" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M4 10.5V17a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6.5" />
+                    <path d="M4 10.5 12 5l8 5.5" />
+                    <path d="M10 19v-4h4v4" />
+                  </svg>
+                </span>
+                <span>حساب جدید</span>
               </button>
-            ) : null}
+            </div>
+            <button
+              className="corner-add-btn"
+              type="button"
+              aria-expanded={addOpen}
+              aria-label={addOpen ? 'بستن' : 'افزودن'}
+              onClick={() => setAddOpen((open) => !open)}
+            >
+              <span className="corner-plus" aria-hidden="true" />
+            </button>
           </div>
         ) : null}
 
