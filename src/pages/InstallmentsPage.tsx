@@ -39,8 +39,7 @@ export function InstallmentsPage({
       if (rank !== 0) return rank
       return a.createdAt - b.createdAt
     })
-  const completed = plans.filter((p) => p.status === 'completed')
-  const archived = plans.filter((p) => p.status === 'archived')
+  const finished = plans.filter((p) => p.status === 'completed' || p.status === 'archived')
   const empty = plans.length === 0
   const lines = dueReminderLines(plans, items, today, reminders.leadDays)
 
@@ -74,6 +73,11 @@ export function InstallmentsPage({
         </button>
       </div>
 
+      <button className="archive-entry" type="button" onClick={() => navigate('/installments/archive')}>
+        <span>بایگانی اقساط</span>
+        <span className="plan-meta">{toFaDigits(finished.length)} برنامه</span>
+      </button>
+
       {empty ? (
         <div className="empty-state lg">
           <div className="empty-ico">📅</div>
@@ -83,72 +87,36 @@ export function InstallmentsPage({
             ＋ ساخت برنامه اقساط
           </button>
         </div>
+      ) : active.length === 0 ? (
+        <div className="empty-state lg">
+          <div className="empty-ico">📦</div>
+          <h2>برنامه فعالی نیست</h2>
+          <p>اقساط پایان‌یافته از این لیست برداشته شده‌اند و در بایگانی هستند.</p>
+        </div>
       ) : (
         <>
-          {active.length > 0 ? (
-            <>
-              <div className="section-head" style={{ marginTop: 14 }}>
-                <h2>برنامه‌های فعال</h2>
-                <span className="link">{toFaDigits(active.length)} مورد</span>
-              </div>
-              <div className="plan-list">
-                {active.map((plan) => (
-                  <PlanCard
-                    key={plan.id}
-                    plan={plan}
-                    items={items.filter((i) => i.planId === plan.id)}
-                    today={today}
-                    onClick={() => navigate(`/installments/${plan.id}`)}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
-
-          {completed.length > 0 ? (
-            <>
-              <div className="section-head">
-                <h2>تکمیل‌شده</h2>
-              </div>
-              <div className="plan-list">
-                {completed.map((plan) => (
-                  <PlanCard
-                    key={plan.id}
-                    plan={plan}
-                    items={items.filter((i) => i.planId === plan.id)}
-                    today={today}
-                    onClick={() => navigate(`/installments/${plan.id}`)}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
-
-          {archived.length > 0 ? (
-            <>
-              <div className="section-head">
-                <h2>آرشیو</h2>
-              </div>
-              <div className="plan-list">
-                {archived.map((plan) => (
-                  <PlanCard
-                    key={plan.id}
-                    plan={plan}
-                    items={items.filter((i) => i.planId === plan.id)}
-                    today={today}
-                    onClick={() => navigate(`/installments/${plan.id}`)}
-                  />
-                ))}
-              </div>
-            </>
-          ) : null}
+          <div className="section-head" style={{ marginTop: 14 }}>
+            <h2>برنامه‌های فعال</h2>
+            <span className="link">{toFaDigits(active.length)} مورد</span>
+          </div>
+          <div className="plan-list">
+            {active.map((plan) => (
+              <PlanCard
+                key={plan.id}
+                plan={plan}
+                items={items.filter((i) => i.planId === plan.id)}
+                today={today}
+                onClick={() => navigate(`/installments/${plan.id}`)}
+              />
+            ))}
+          </div>
         </>
       )}
     </div>
   )
 }
 
-function PlanCard({
+export function PlanCard({
   plan,
   items,
   today,

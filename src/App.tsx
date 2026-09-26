@@ -21,6 +21,7 @@ import { VoiceSheet } from './components/VoiceSheet'
 import { SyncSheet } from './components/SyncSheet'
 import { AllTransactionsPage } from './pages/AllTransactionsPage'
 import { InstallmentsPage } from './pages/InstallmentsPage'
+import { InstallmentsArchivePage } from './pages/InstallmentsArchivePage'
 import { InstallmentDetailPage } from './pages/InstallmentDetailPage'
 import { remainingAmount } from './lib/installments'
 import { todayIso } from './lib/iso'
@@ -40,11 +41,11 @@ export type Sheet =
   | { type: 'settings' }
   | { type: 'voice' }
   | { type: 'sync' }
-  | { type: 'confirm'; title: string; message: string; run: () => Promise<void> }
+  | { type: 'confirm'; title: string; message: string; confirmLabel?: string; run: () => Promise<void> }
 
 function Shell() {
   const location = useLocation()
-  const { ready, error, totalBalance, accounts, transactions, plans, items, resetDemo, wipeAll, deleteTransaction, deleteAccount, deleteInstallmentPlan, deleteInstallmentItem } = useStore()
+  const { ready, error, totalBalance, accounts, transactions, plans, items, resetDemo, wipeAll, deleteTransaction, deleteAccount, deleteInstallmentPlan, deleteInstallmentItem, unpayInstallment } = useStore()
   const { unlocked: vaultOpen, vaultConfigured } = useExtras()
   const [compact, setCompact] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -143,8 +144,16 @@ function Shell() {
           run: () => deleteInstallmentItem(id),
         })
       },
+      unpayItem: (id) =>
+        setSheet({
+          type: 'confirm',
+          title: 'برگشت به پرداخت‌نشده؟',
+          confirmLabel: 'برگشت',
+          message: 'هزینهٔ این قسط حذف می‌شود، موجودی حساب برمی‌گردد و قسط دوباره مانده می‌شود. اگر برنامه تمام شده باشد به لیست فعال برمی‌گردد.',
+          run: () => unpayInstallment(id),
+        }),
     }),
-    [transactions, items, deleteTransaction, deleteAccount, deleteInstallmentPlan, deleteInstallmentItem],
+    [transactions, items, deleteTransaction, deleteAccount, deleteInstallmentPlan, deleteInstallmentItem, unpayInstallment],
   )
 
   if (error) {
@@ -187,6 +196,10 @@ function Shell() {
             element={<AccountsPage onScroll={onScroll} />}
           />
           <Route path="/accounts/:id" element={<AccountDetailRoute onScroll={onScroll} setSheet={setSheet} />} />
+          <Route
+            path="/installments/archive"
+            element={<InstallmentsArchivePage onScroll={onScroll} />}
+          />
           <Route
             path="/installments"
             element={
@@ -350,6 +363,7 @@ function Shell() {
         <ConfirmSheet
           title={sheet.title}
           message={sheet.message}
+          confirmLabel={sheet.confirmLabel}
           onConfirm={sheet.run}
           onClose={() => setSheet(null)}
         />

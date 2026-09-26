@@ -64,6 +64,25 @@ function reindexItems(items: InstallmentItem[]): InstallmentItem[] {
     .map((item, idx) => (item.index === idx + 1 ? item : { ...item, index: idx + 1 }))
 }
 
+/** Return one paid installment to unpaid. The linked expense is removed and the account balance comes back. */
+export function unpayInstallmentItem(itemId: string, data: AppData, today = todayIso()): AppData {
+  const item = data.items.find((row) => row.id === itemId)
+  if (!item) throw new Error('قسط پیدا نشد')
+  if (itemEffectiveStatus(item, today) !== 'paid') throw new Error('این قسط پرداخت نشده')
+  if (item.transactionId && data.transactions.some((row) => row.id === item.transactionId)) {
+    return deleteTransactionCascade(item.transactionId, data, today)
+  }
+  const nextItems = data.items.map((row) =>
+    row.id === item.id ? { ...row, status: 'pending' as const, paidAt: undefined, transactionId: undefined } : row,
+  )
+  const plans = data.plans.map((plan) => {
+    if (plan.id !== item.planId) return plan
+    const planItems = nextItems.filter((row) => row.planId === plan.id)
+    return { ...plan, status: nextPlanStatus(plan, planItems, today), updatedAt: Date.now() }
+  })
+  return { ...data, items: nextItems, plans }
+}
+
 /** Delete one transaction. Transfer legs are always removed together. Linked installment items are unpaid, not removed. */
 export function deleteTransactionCascade(txId: string, data: AppData, today = todayIso()): AppData {
   const tx = data.transactions.find((row) => row.id === txId)

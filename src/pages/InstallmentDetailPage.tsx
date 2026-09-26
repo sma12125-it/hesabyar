@@ -55,7 +55,12 @@ export function InstallmentDetailPage({
   return (
     <div className="app-scroll" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
       <div className="detail-top">
-        <button className="back-btn" type="button" onClick={() => navigate('/installments')} aria-label="بازگشت">
+        <button
+          className="back-btn"
+          type="button"
+          onClick={() => navigate(plan.status === 'active' ? '/installments' : '/installments/archive')}
+          aria-label="بازگشت"
+        >
           ›
         </button>
         <h1>{plan.name}</h1>
@@ -119,6 +124,13 @@ export function InstallmentDetailPage({
         <div className="banner archive">
           <span className="bico">📦</span>
           <span>این برنامه آرشیو شده است — پرداخت جدید ممکن نیست</span>
+        </div>
+      ) : null}
+
+      {plan.status === 'completed' ? (
+        <div className="banner archive">
+          <span className="bico">📦</span>
+          <span>این برنامه پایان یافته و در بایگانی است. برگشت یک قسط آن را به لیست فعال برمی‌گرداند.</span>
         </div>
       ) : null}
 
@@ -209,27 +221,10 @@ function ItemRow({
   const lateDays = status === 'overdue' ? Math.abs(daysUntil(item.dueDate, today)) : 0
   const clickable = status !== 'paid' && onPay
   const actions = useUiActions()
+  const rowClass = `inst-row lg-row${status === 'overdue' ? ' highlight-overdue' : ''}`
 
-  return (
-    <SwipeRow
-      onEdit={
-        actions
-          ? () => {
-              if (status === 'paid' && item.transactionId) actions.editTransaction(item.transactionId)
-              else actions.editItem(item.id)
-            }
-          : undefined
-      }
-      onDelete={actions ? () => actions.deleteItem(item.id) : undefined}
-    >
-    <button
-      className={`inst-row lg-row${status === 'overdue' ? ' highlight-overdue' : ''}`}
-      type="button"
-      onClick={() => {
-        if (clickable) onPay(item.id)
-      }}
-      style={{ cursor: clickable ? 'pointer' : 'default' }}
-    >
+  const body = (
+    <>
       <div className={`inst-num${status === 'paid' ? ' paid' : status === 'overdue' ? ' overdue' : ''}`}>
         {toFaDigits(item.index)}
       </div>
@@ -255,8 +250,41 @@ function ItemRow({
         >
           {status === 'paid' ? 'پرداخت‌شده' : status === 'overdue' ? 'معوق' : 'مانده'}
         </span>
+        {status === 'paid' ? (
+          <button className="cat-mini inst-unpay" type="button" onClick={() => actions?.unpayItem(item.id)}>
+            برگشت به مانده
+          </button>
+        ) : null}
       </div>
+    </>
+  )
+
+  return (
+    <SwipeRow
+      onEdit={
+        actions
+          ? () => {
+              if (status === 'paid' && item.transactionId) actions.editTransaction(item.transactionId)
+              else actions.editItem(item.id)
+            }
+          : undefined
+      }
+      onDelete={actions ? () => actions.deleteItem(item.id) : undefined}
+    >
+    {status === 'paid' ? (
+      <div className={rowClass}>{body}</div>
+    ) : (
+    <button
+      className={rowClass}
+      type="button"
+      onClick={() => {
+        if (clickable) onPay(item.id)
+      }}
+      style={{ cursor: clickable ? 'pointer' : 'default' }}
+    >
+      {body}
     </button>
+    )}
     </SwipeRow>
   )
 }
