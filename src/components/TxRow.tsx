@@ -58,6 +58,7 @@ export const TxRow = memo(function TxRow({
   }
   const who = actorLabel(tx.actorEmail)
   if (who) subBits.push(`ثبت ${who}`)
+  if (tx.source === 'sms') subBits.push('پیامک')
 
   return (
     <SwipeRow

@@ -24,6 +24,9 @@ export interface Account {
   shareId?: string
 }
 
+/** Absent on older rows, which stay manual entries. */
+export type TxSource = 'sms' | 'manual'
+
 export interface Transaction {
   id: string
   kind: TxKind
@@ -40,6 +43,8 @@ export interface Transaction {
   updatedAt?: number
   /** Email of the signed-in user who recorded this row. */
   actorEmail?: string
+  /** Set when a reviewed bank SMS is confirmed. Older rows omit this and stay manual. */
+  source?: TxSource
 }
 
 export interface Category {
@@ -93,6 +98,7 @@ export interface QuickEntryInput {
   categoryId: string
   note: string
   date?: string
+  source?: TxSource
 }
 
 export interface TransferInput {
@@ -101,6 +107,7 @@ export interface TransferInput {
   toAccountId: string
   note: string
   date: string
+  source?: TxSource
 }
 
 export interface CreateInstallmentPlanInput {

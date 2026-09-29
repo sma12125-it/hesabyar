@@ -1568,7 +1568,8 @@ html[data-theme='dark'] .corner-item-ico {
     align-content: start;
   }
 
-  .settings-page > .top-row { grid-column: 1 / -1; }
+  .settings-page > .top-row,
+  .settings-page > .settings-credit { grid-column: 1 / -1; }
   .balance-hero { text-align: right; }
   .qa-group { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
@@ -1591,4 +1592,62 @@ html[data-theme='dark'] .corner-item-ico {
     border-radius: 22px;
     animation: none;
   }
+}
+
+.sms-lead { margin: 0 0 10px; }
+.sms-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+a.home-pill { display: inline-flex; align-items: center; text-decoration: none; }
+.sms-list { display: flex; flex-direction: column; gap: 10px; }
+.sms-card {
+  width: 100%;
+  border: 0;
+  text-align: right;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.sms-card header { width: 100%; display: flex; justify-content: space-between; gap: 8px; }
+.sms-card b { font-size: 22px; }
+.sms-card b.up { color: var(--hy-income); }
+.sms-card b.down { color: var(--hy-expense); }
+.sms-card small, .sms-card em { font-style: normal; color: var(--hy-text-secondary); font-size: 12px; }
+.sms-card em.warn { color: var(--hy-expense); }
+.sms-pending-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+}
+.sms-pending-link h2 { margin: 0; font-size: 16px; }
+.sms-pending-link p { margin: 4px 0 0; color: var(--hy-text-secondary); font-size: 13px; }
+.sms-choice { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.sms-choice .home-pill:not(.ghost) { background: var(--hy-teal); color: #fff; }
+.sms-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 14px;
+}
+.sms-toggle input { width: 18px; height: 18px; accent-color: var(--hy-teal); }
+.sms-unit { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.sms-facts { margin: 8px 0; padding: 0; list-style: none; color: var(--hy-text-secondary); font-size: 13px; }
+.sms-facts li { padding: 4px 0; }
+.sms-original { white-space: pre-wrap; font-size: 13px; }
+.sms-text { min-height: 120px; resize: vertical; }
+.sms-footer { display: flex; gap: 8px; }
+.sms-footer .cta-confirm { flex: 1; }
+.sms-facts + details, .settings-block .field-stack > span { font-size: 12px; color: var(--hy-text-secondary); }
+.settings-credit {
+  margin: 22px 0 8px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--hy-text-tertiary);
 }
