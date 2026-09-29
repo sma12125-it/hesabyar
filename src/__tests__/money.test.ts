@@ -3,6 +3,7 @@ import {
   availableAfterReplacing,
   caretFromRialDigitCount,
   countRialDigits,
+  formatCompactRial,
   formatRial,
   formatRialInput,
   maskRialInput,
@@ -18,6 +19,12 @@ describe('rial formatting', () => {
   it('formats grouped Persian digits without a sign', () => {
     expect(formatRial(416_700_000)).toBe((416_700_000).toLocaleString('fa-IR'))
     expect(formatRial(-450_000)).toBe((450_000).toLocaleString('fa-IR'))
+  })
+
+  it('compacts large rial amounts for the dashboard', () => {
+    expect(formatCompactRial(86_400_000)).toBe('۸۶\u066b۴ میلیون')
+    expect(formatCompactRial(52_000_000)).toBe('۵۲ میلیون')
+    expect(formatCompactRial(12_500)).toBe(formatRial(12_500))
   })
 
   it('parses Persian and Western digit input', () => {

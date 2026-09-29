@@ -1,15 +1,10 @@
+import type { Dispatch, SetStateAction } from 'react'
 import { CloudLamp } from '../components/CloudLamp'
 import { HomeDashboard } from '../components/HomeDashboard'
 import { SettingsButton } from '../components/SettingsButton'
-import { formatRial, toFaDigits } from '../lib/money'
-import { useStore } from '../store/Store'
-import { BalanceHero } from '../components/BalanceHero'
-import { TxRow, visibleLedger } from '../components/TxRow'
-import { formatPersianDate } from '../lib/dates'
-import { homeInstallmentHints } from '../lib/installments'
+import { isoToJalali, JALALI_MONTHS } from '../lib/jalaali'
 import { todayIso } from '../lib/iso'
-import type { Dispatch, SetStateAction } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { toFaDigits } from '../lib/money'
 
 interface HomePageProps {
   onScroll: (compact: boolean) => void
@@ -21,131 +16,53 @@ interface HomePageProps {
 }
 
 export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, onSettings }: HomePageProps) {
-  const { activeAccounts, totalBalance, transactions, accounts, plans, items } = useStore()
-  const navigate = useNavigate()
-  const ledger = visibleLedger(transactions)
-  const recent = ledger.slice(0, 5)
   const today = todayIso()
-  const hints = homeInstallmentHints(plans, items, today).slice(0, 4)
+  const jalali = isoToJalali(today)
+  const subtitle = jalali ? `${JALALI_MONTHS[jalali.jm - 1]} ${toFaDigits(jalali.jy)} · امروز` : 'امروز'
 
   return (
-    <div
-      className="app-scroll page-home"
-      onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}
-    >
-      <div className="top-row">
-        <h1
-          onContextMenu={(e) => {
-            e.preventDefault()
-            onSettings()
-          }}
-        >
-          خانه
-        </h1>
-        <CloudLamp />
-        <SettingsButton />
-        <button
-          className="icon-btn"
-          type="button"
-          title="اعلان‌ها"
-          onClick={() => setToast('اعلانی نیست — نگه‌دار برای داده محلی')}
-          onContextMenu={(e) => {
-            e.preventDefault()
-            onSettings()
-          }}
-        >
-          🔔
-        </button>
-      </div>
-
-      <BalanceHero
-        label="موجودی کل"
-        amount={totalBalance}
-        sub={`${toFaDigits(activeAccounts.length)} حساب فعال · به‌روز الآن`}
-      />
-
-      <div className="qa-group lg">
-        <button className="qa-item" type="button" onClick={() => onQuickEntry('expense')}>
-          <span className="qa-ico">🛒</span>
-          <span className="label">هزینه</span>
-        </button>
-        <button className="qa-item" type="button" onClick={() => onQuickEntry('income')}>
-          <span className="qa-ico">💰</span>
-          <span className="label">درآمد</span>
-        </button>
-        <button className="qa-item" type="button" onClick={onTransfer}>
-          <span className="qa-ico">⇄</span>
-          <span className="label">انتقال</span>
-        </button>
-        <button className="qa-item" type="button" onClick={() => navigate('/installments')}>
-          <span className="qa-ico">📅</span>
-          <span className="label">اقساط</span>
-        </button>
-      </div>
-
-      <HomeDashboard />
-
-      {hints.length > 0 ? (
-        <>
-          <div className="section-head">
-            <h2>سررسید اقساط</h2>
-            <button className="link" type="button" onClick={() => navigate('/installments')}>
-              همه
-            </button>
-          </div>
-          <div className="plan-list">
-            {hints.map(({ plan, item, kind }) => (
-              <button
-                key={item.id}
-                className="plan-card lg-row"
-                type="button"
-                onClick={() => navigate(`/installments/${plan.id}`)}
-              >
-                <div className="plan-top">
-                  <div>
-                    <div className="plan-name">{plan.name}</div>
-                    <div className="plan-meta">
-                      {kind === 'overdue'
-                        ? `معوق · سررسید ${formatPersianDate(item.dueDate)}`
-                        : `سررسید ${formatPersianDate(item.dueDate)}`}
-                    </div>
-                  </div>
-                  <div className="plan-right">
-                    <span className={`badge ${kind === 'overdue' ? 'overdue' : 'due-soon'}`}>
-                      {kind === 'overdue' ? 'معوق' : 'به‌زودی'}
-                    </span>
-                    <div className="plan-amount">
-                      {formatRial(item.amount)}
-                      <span className="unit">ریال</span>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
-
-      <div className="section-head">
-        <h2>تراکنش‌های اخیر</h2>
-        {ledger.length > 0 ? (
-          <button className="link show-all" type="button" onClick={onAll}>
-            نمایش همه
+    <div className="app-scroll page-home" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
+      <div className="home-head">
+        <div className="home-title">
+          <h1
+            onContextMenu={(e) => {
+              e.preventDefault()
+              onSettings()
+            }}
+          >
+            نمای کلی مالی
+          </h1>
+          <p>{subtitle}</p>
+        </div>
+        <div className="home-head-icons">
+          <CloudLamp />
+          <SettingsButton />
+          <button
+            className="icon-btn"
+            type="button"
+            title="اعلان‌ها"
+            onClick={() => setToast('اعلانی نیست')}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              onSettings()
+            }}
+          >
+            🔔
           </button>
-        ) : null}
+        </div>
+        <div className="home-head-actions">
+          <button className="home-pill income" type="button" onClick={() => onQuickEntry('income')}>
+            + درآمد
+          </button>
+          <button className="home-pill expense" type="button" onClick={() => onQuickEntry('expense')}>
+            + هزینه
+          </button>
+          <button className="home-pill ghost" type="button" onClick={onTransfer}>
+            انتقال
+          </button>
+        </div>
       </div>
-
-      <div className="tx-list">
-        {recent.length === 0 ? (
-          <div className="empty-state lg" style={{ marginTop: 8 }}>
-            <div className="empty-ico">🧾</div>
-            <h2>تراکنشی نیست</h2>
-            <p>با دکمه ثبت، اولین هزینه یا درآمدت را وارد کن.</p>
-          </div>
-        ) : (
-          recent.map((tx) => <TxRow key={tx.id} tx={tx} accounts={accounts} />)
-        )}
-      </div>
+      <HomeDashboard onAll={onAll} />
     </div>
   )
 }

@@ -25,6 +25,21 @@ export function parseRialInput(raw: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
+/** Short Rial label for dashboard cards: ۱۲٫۴ میلیون، or the full grouped amount. */
+export function formatCompactRial(amount: number): string {
+  const abs = Math.abs(Math.trunc(amount))
+  const sign = amount < 0 ? '−' : ''
+  if (abs >= 1_000_000_000) return `${sign}${compactDigits(abs / 1_000_000_000)} میلیارد`
+  if (abs >= 1_000_000) return `${sign}${compactDigits(abs / 1_000_000)} میلیون`
+  return `${sign}${formatRial(abs)}`
+}
+
+function compactDigits(value: number): string {
+  const rounded = Math.round(value * 10) / 10
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  return toFaDigits(text).replace('.', '\u066b')
+}
+
 /** Grouped Persian digits, no sign. Amounts are Rial-only. */
 export function formatRial(amount: number): string {
   const abs = Math.abs(Math.trunc(amount))
