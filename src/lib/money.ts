@@ -1,15 +1,25 @@
 import type { TxKind } from '../types'
 
 const FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
+const AR_DIGITS = '٠١٢٣٤٥٦٧٨٩'
 
 export function toFaDigits(value: string | number): string {
   return String(value).replace(/\d/g, (d) => FA_DIGITS[Number(d)] ?? d)
 }
 
-export function parseRialInput(raw: string): number {
-  const western = raw
+/** Persian (۰-۹) and Arabic-Indic (٠-٩) digits become 0-9. English digits stay. */
+export function toWesternDigits(raw: string): string {
+  return raw
     .replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d)))
-    .replace(/[^\d]/g, '')
+    .replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d)))
+}
+
+export function digitsOnly(raw: string): string {
+  return toWesternDigits(raw).replace(/\D/g, '')
+}
+
+export function parseRialInput(raw: string): number {
+  const western = digitsOnly(raw)
   if (!western) return 0
   const n = Number(western)
   return Number.isFinite(n) ? n : 0
@@ -33,7 +43,7 @@ export function maskRialInput(raw: string): string {
 }
 
 function isRialDigit(ch: string): boolean {
-  return (ch >= '0' && ch <= '9') || (ch >= '۰' && ch <= '۹')
+  return (ch >= '0' && ch <= '9') || (ch >= '۰' && ch <= '۹') || (ch >= '٠' && ch <= '٩')
 }
 
 export function countRialDigits(value: string): number {
@@ -99,8 +109,7 @@ export function availableAfterReplacing(
 
 /** Decimal parser for interest rates (Persian digits and ٫ allowed). */
 export function parseDecimalInput(raw: string): number {
-  const western = raw
-    .replace(/[۰-۹]/g, (d) => String(FA_DIGITS.indexOf(d)))
+  const western = toWesternDigits(raw)
     .replace(/٫/g, '.')
     .replace(/[^\d.]/g, '')
   if (!western) return 0

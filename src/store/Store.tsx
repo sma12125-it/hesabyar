@@ -31,7 +31,9 @@ import {
   validatePlanUpdate,
 } from '../lib/installments'
 import { isValidIsoDate, todayIso } from '../lib/iso'
+import { actorStamp } from '../lib/actor'
 import { availableAfterReplacing, validateAccountName, validateAmount, validateExpenseBalance } from '../lib/money'
+import { applyShareToData, type SharePayload } from '../lib/share'
 import { validateTransfer } from '../lib/transfer'
 import type {
   Account,
@@ -82,6 +84,8 @@ interface StoreValue {
   createCategory: (kind: 'expense' | 'income', name: string) => Promise<Category>
   renameCategory: (id: string, name: string) => Promise<void>
   deleteCategory: (id: string) => Promise<void>
+  attachShare: (accountId: string, shareId: string) => Promise<void>
+  applyShared: (ledgerId: string, payload: SharePayload) => Promise<void>
   importCloud: (data: {
     accounts: Account[]
     transactions: Transaction[]
@@ -92,6 +96,12 @@ interface StoreValue {
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
+
+let readLiveImpl: () => AppData = () => ({ accounts: [], transactions: [], plans: [], items: [] })
+
+export function readLiveStore() {
+  return readLiveImpl()
+}
 
 function hydrateSnapshot(data: AppData): AppData {
   return {
@@ -112,6 +122,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [customCategories, setCustomCategories] = useState<Category[]>([])
   const dataRef = useRef<AppData>({ accounts, transactions, plans, items })
   dataRef.current = { accounts, transactions, plans, items }
+  readLiveImpl = () => dataRef.current
 
   const applySnapshot = useCallback((data: AppData) => {
     const next = hydrateSnapshot(data)
@@ -262,6 +273,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       note: input.note.trim(),
       date,
       createdAt: now,
+      ...actorStamp(now),
     }
     await persistSnapshot(prev, { ...prev, transactions: [tx, ...prev.transactions] })
   }, [persistSnapshot])
@@ -273,6 +285,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const from = prev.accounts.find((a) => a.id === input.fromAccountId)!
     const to = prev.accounts.find((a) => a.id === input.toAccountId)!
     const now = Date.now()
+    const stamp = actorStamp(now)
     const transferId = createId('tr')
     const note = input.note.trim()
     const outTx: Transaction = {
@@ -286,6 +299,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       note,
       date: input.date,
       createdAt: now,
+      ...stamp,
     }
     const inTx: Transaction = {
       id: createId('tx'),
@@ -298,6 +312,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       note,
       date: input.date,
       createdAt: now + 1,
+      ...stamp,
+      updatedAt: now + 1,
     }
     await persistSnapshot(prev, { ...prev, transactions: [outTx, inTx, ...prev.transactions] })
   }, [persistSnapshot])
@@ -326,6 +342,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         credited,
       )
       if (errorMessage) throw new Error(errorMessage)
+      const editedAt = Date.now()
       const nextOut: Transaction = {
         ...outTx,
         amount,
@@ -333,6 +350,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         counterpartyAccountId: toId,
         note,
         date,
+        updatedAt: editedAt,
       }
       const nextIn: Transaction = {
         ...inTx,
@@ -341,6 +359,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         counterpartyAccountId: fromId,
         note,
         date,
+        updatedAt: editedAt,
       }
       await persistSnapshot(prev, {
         ...prev,
@@ -379,6 +398,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       categoryId: tx.installmentItemId ? INSTALLMENT_CATEGORY_ID : (patch.categoryId ?? tx.categoryId),
       note: patch.note != null ? patch.note.trim() : tx.note,
       date,
+      updatedAt: Date.now(),
+      actorEmail: tx.actorEmail ?? actorStamp().actorEmail,
     }
     const nextItems = tx.installmentItemId
       ? prev.items.map((item) => (item.id === tx.installmentItemId ? { ...item, amount } : item))
@@ -560,6 +581,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       note: (note ?? defaultPayNote(plan.name, item.index, plan.totalCount)).trim(),
       date: today,
       createdAt: now,
+      ...actorStamp(now),
     }
     const paidItem: InstallmentItem = {
       ...item,
@@ -646,6 +668,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await persistCategories(customCategories.filter((c) => c.id !== id))
   }, [customCategories, persistCategories, persistSnapshot])
 
+  const attachShare = useCallback(async (accountId: string, shareId: string) => {
+    const prev = dataRef.current
+    const account = prev.accounts.find((row) => row.id === accountId)
+    if (!account) throw new Error('حساب پیدا نشد')
+    await persistSnapshot(prev, {
+      ...prev,
+      accounts: prev.accounts.map((row) =>
+        row.id === accountId ? { ...row, shareId, updatedAt: Date.now() } : row,
+      ),
+    })
+  }, [persistSnapshot])
+
+  const applyShared = useCallback(async (ledgerId: string, payload: SharePayload) => {
+    const prev = dataRef.current
+    const next = applyShareToData(prev, ledgerId, payload)
+    const signature = (data: AppData) =>
+      data.accounts
+        .map((account) => `${account.id}:${account.shareId ?? ''}:${account.name}:${account.openingBalance}:${account.archived}:${account.updatedAt}`)
+        .sort()
+        .join('|') +
+      '#' +
+      data.transactions
+        .map((tx) => `${tx.id}:${tx.updatedAt ?? tx.createdAt}:${tx.amount}:${tx.accountId}`)
+        .sort()
+        .join('|')
+    if (signature(prev) === signature(next)) return
+    const { withoutSync } = await import('../lib/sync')
+    await withoutSync(() => persistSnapshot(prev, next))
+  }, [persistSnapshot])
+
   const importCloud = useCallback(async (data: {
     accounts: Account[]
     transactions: Transaction[]
@@ -698,6 +750,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createCategory,
       renameCategory,
       deleteCategory,
+      attachShare,
+      applyShared,
       importCloud,
     }),
     [
@@ -734,6 +788,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createCategory,
       renameCategory,
       deleteCategory,
+      attachShare,
+      applyShared,
       importCloud,
     ],
   )

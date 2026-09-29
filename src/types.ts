@@ -20,6 +20,8 @@ export interface Account {
   updatedAt: number
   /** Vault card this bank account was opened from. */
   cardId?: string
+  /** Cloud ledger shared with another signed-in user. */
+  shareId?: string
 }
 
 export interface Transaction {
@@ -35,6 +37,9 @@ export interface Transaction {
   /** ISO Gregorian calendar date (YYYY-MM-DD). */
   date: string
   createdAt: number
+  updatedAt?: number
+  /** Email of the signed-in user who recorded this row. */
+  actorEmail?: string
 }
 
 export interface Category {

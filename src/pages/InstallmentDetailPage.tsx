@@ -10,6 +10,7 @@ import {
 import { daysUntil, todayIso } from '../lib/iso'
 import { formatRial, toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
+import { SettingsButton } from '../components/SettingsButton'
 import { SwipeRow } from '../components/SwipeRow'
 import { useUiActions } from '../components/UiActions'
 import type { InstallmentItem } from '../types'
@@ -64,6 +65,7 @@ export function InstallmentDetailPage({
           ›
         </button>
         <h1>{plan.name}</h1>
+        <SettingsButton />
         <button className="icon-btn" type="button" onClick={() => setMenu((v) => !v)} aria-label="گزینه‌ها">
           ⋯
         </button>

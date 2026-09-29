@@ -67,6 +67,17 @@ export function expenseByCategory(
     .sort((a, b) => b.amount - a.amount)
 }
 
+export function monthTotals(transactions: Transaction[], month: string): { income: number; expense: number; net: number } {
+  let income = 0
+  let expense = 0
+  for (const tx of transactions) {
+    if (monthKey(tx.date) !== month) continue
+    if (tx.kind === 'income') income += tx.amount
+    if (tx.kind === 'expense') expense += tx.amount
+  }
+  return { income, expense, net: income - expense }
+}
+
 export function spentInCategory(transactions: Transaction[], month: string, categoryId: string): number {
   return transactions.reduce((sum, tx) => {
     if (tx.kind === 'expense' && tx.categoryId === categoryId && monthKey(tx.date) === month) return sum + tx.amount

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store/Store'
 import { BalanceHero } from '../components/BalanceHero'
 import { TxRow } from '../components/TxRow'
+import { SettingsButton } from '../components/SettingsButton'
 import { useUiActions } from '../components/UiActions'
 
 export function AccountDetailPage({
@@ -10,11 +11,13 @@ export function AccountDetailPage({
   onQuickEntry,
   onTransfer,
   onEdit,
+  onShare,
 }: {
   onScroll: (compact: boolean) => void
   onQuickEntry: () => void
   onTransfer: () => void
   onEdit: () => void
+  onShare: () => void
 }) {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -46,6 +49,7 @@ export function AccountDetailPage({
           ›
         </button>
         <h1>{account.name}</h1>
+        <SettingsButton />
         <button className="icon-btn" type="button" onClick={() => setMenu((v) => !v)} aria-label="گزینه‌ها">
           ⋯
         </button>
@@ -109,12 +113,16 @@ export function AccountDetailPage({
           <>
             <span className={`badge ${account.type}`}>{account.type === 'cash' ? 'نقد' : 'بانک'}</span>
             {' · '}
+            {account.shareId ? 'مشترک · ' : ''}
             {account.archived ? 'آرشیو' : 'فعال'}
           </>
         }
       />
 
       <div className="action-row">
+        <button className="action-chip lg-light" type="button" onClick={onShare}>
+          <span className="aico">👥</span>اشتراک
+        </button>
         <button
           className={`action-chip lg-light${disabled ? ' disabled' : ''}`}
           type="button"
