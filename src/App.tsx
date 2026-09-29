@@ -28,6 +28,8 @@ import { todayIso } from './lib/iso'
 import { LiveSync } from './components/LiveSync'
 import { SharedSync } from './components/SharedSync'
 import { ShareSheet } from './components/ShareSheet'
+import { SmsBridge } from './components/SmsBridge'
+import { PendingTransactionsPage } from './pages/PendingTransactionsPage'
 import { ExtrasProvider, useExtras } from './store/Extras'
 import { StoreProvider, useStore } from './store/Store'
 
@@ -188,6 +190,7 @@ function Shell() {
     <PhoneShell>
       <LiveSync />
       <SharedSync />
+      <SmsBridge />
       <UiActionsContext.Provider value={uiActions}>
       <div className="app">
         <Routes>
@@ -234,6 +237,7 @@ function Shell() {
             element={<ReportsPage onScroll={onScroll} />}
           />
           <Route path="/settings" element={<SettingsPage onScroll={onScroll} />} />
+          <Route path="/transactions/pending" element={<PendingTransactionsPage onScroll={onScroll} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
 

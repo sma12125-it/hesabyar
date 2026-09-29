@@ -4,8 +4,10 @@ import { SyncSheet } from '../components/SyncSheet'
 import { loadLock, registerBiometric, setPattern, type AppLockRecord } from '../lib/applock'
 import { rememberedAccountPassword } from '../lib/account'
 import { joinSharedCode } from '../lib/share'
+import { toFaDigits } from '../lib/money'
 import { notifyUser } from '../lib/sync'
 import { useExtras } from '../store/Extras'
+import { SmsSettingsSection } from '../components/SmsSettingsSection'
 import { VaultRecover } from '../components/VaultRecover'
 
 type Popup = 'cloud' | 'security' | 'vault' | null
@@ -36,6 +38,7 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
           <button className={`seg-btn${theme === 'dark' ? ' active' : ''}`} type="button" onClick={() => setTheme('dark')}>تاریک</button>
         </div>
       </section>
+      <SmsSettingsSection />
       <section className="lg settings-block">
         <h2>پیوستن به کارت مشترک</h2>
         <p className="sheet-sub">کدی که صاحب کارت به شما داده را وارد کنید. درآمد و هزینهٔ همان کارت برای هر دو نفر به‌روز می‌شود.</p>
@@ -92,6 +95,7 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
         </span>
         <span className="fchev">‹</span>
       </button>
+      <p className="settings-credit">سازنده محمد احمدی · نسخه {toFaDigits('0.1.0').replaceAll('.', '\u066b')}</p>
       {popup === 'cloud' ? <SyncSheet onClose={() => setPopup(null)} /> : null}
       {popup === 'security' ? <SecurityPopup onClose={() => setPopup(null)} /> : null}
       {popup === 'vault' ? <VaultPopup onClose={() => setPopup(null)} /> : null}

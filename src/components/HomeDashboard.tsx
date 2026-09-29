@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { JALALI_MONTHS, isoToJalali } from '../lib/jalaali'
 import { expenseByCategory, monthKey, monthTotals, monthlySeries, spentInCategory } from '../lib/reports'
 import { formatPersianDate, formatRelativeFromIso } from '../lib/dates'
@@ -8,6 +8,7 @@ import { formatCompactRial, formatRial, toFaDigits } from '../lib/money'
 import { txTitle, visibleLedger } from './TxRow'
 import { useUiActions } from './UiActions'
 import { useExtras } from '../store/Extras'
+import { useSmsDrafts } from '../lib/sms/useSmsDrafts'
 import { useStore } from '../store/Store'
 
 function faNumber(value: number) {
@@ -52,6 +53,7 @@ export function HomeDashboard({ onAll }: { onAll: () => void }) {
   const ringRatio = Math.min(100, percent(ringSpent, ringLimit))
   const ringLeft = Math.max(ringLimit - ringSpent, 0)
   const hints = homeInstallmentHints(plans, items, today).slice(0, 4)
+  const { pending } = useSmsDrafts()
   const recent = visibleLedger(transactions).slice(0, 4)
   const chartMax = Math.max(1, ...series.flatMap((point) => [point.income, point.expense]))
 
@@ -83,6 +85,14 @@ export function HomeDashboard({ onAll }: { onAll: () => void }) {
           <small>نرخ {toFaDigits(savingsRate)}٪</small>
         </article>
       </div>
+
+      <Link to="/transactions/pending" className="home-card lg sms-pending-link">
+        <div>
+          <h2>تراکنش‌های در انتظار تأیید</h2>
+          <p>{pending.length === 0 ? 'مورد جدیدی نیست' : `${toFaDigits(pending.length)} تراکنش منتظر تأیید`}</p>
+        </div>
+        <span className="home-chip">مشاهده</span>
+      </Link>
 
       <div className="home-split">
         <section className="home-card lg">
@@ -196,7 +206,10 @@ export function HomeDashboard({ onAll }: { onAll: () => void }) {
                   <button key={tx.id} type="button" onClick={() => actions?.editTransaction(tx.id)}>
                     <span>
                       <strong>{txTitle(tx, accounts, customCategories)}</strong>
-                      <small>{formatRelativeFromIso(tx.date)}</small>
+                      <small>
+                        {formatRelativeFromIso(tx.date)}
+                        {tx.source === 'sms' ? ' · پیامک' : ''}
+                      </small>
                     </span>
                     <b className={positive ? 'up' : 'down'}>
                       {positive ? '+' : '−'}

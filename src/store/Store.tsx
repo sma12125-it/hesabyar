@@ -274,6 +274,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       date,
       createdAt: now,
       ...actorStamp(now),
+      ...(input.source ? { source: input.source } : {}),
     }
     await persistSnapshot(prev, { ...prev, transactions: [tx, ...prev.transactions] })
   }, [persistSnapshot])
@@ -300,6 +301,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       date: input.date,
       createdAt: now,
       ...stamp,
+      ...(input.source ? { source: input.source } : {}),
     }
     const inTx: Transaction = {
       id: createId('tx'),
@@ -314,6 +316,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createdAt: now + 1,
       ...stamp,
       updatedAt: now + 1,
+      ...(input.source ? { source: input.source } : {}),
     }
     await persistSnapshot(prev, { ...prev, transactions: [outTx, inTx, ...prev.transactions] })
   }, [persistSnapshot])
@@ -622,6 +625,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     await db.replaceAllData([], [], [], [])
     await db.setKv('seeded', true)
     await db.setKv('customCategories', [])
+    const { clearSmsDrafts } = await import('../lib/sms/drafts')
+    await clearSmsDrafts()
     setCustomCategories([])
     await refresh()
     const { notifyLocalChange } = await import('../lib/sync')
