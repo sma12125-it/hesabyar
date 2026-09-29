@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { categoriesFor } from '../lib/categories'
 import { monthKey, monthlySeries, expenseByCategory, spentInCategory } from '../lib/reports'
 import { todayIso } from '../lib/iso'
-import { formatRial } from '../lib/money'
+import { formatRial, parseRialInput } from '../lib/money'
 import { createId } from '../lib/ids'
+import { SettingsButton } from '../components/SettingsButton'
 import { useExtras } from '../store/Extras'
 import { useStore } from '../store/Store'
 import type { CardMarket } from '../types'
@@ -36,7 +37,7 @@ export function ReportsPage({ onScroll }: { onScroll: (compact: boolean) => void
     <div className="app-scroll" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
       <div className="top-row">
         <h1>گزارش</h1>
-        <span style={{ width: 40 }} />
+        <SettingsButton />
       </div>
       <div className="split-wide">
         <section className="lg report-card">
@@ -78,7 +79,7 @@ export function ReportsPage({ onScroll }: { onScroll: (compact: boolean) => void
                 className="cta-confirm"
                 type="button"
                 onClick={() => {
-                  const monthlyLimit = Number(limit.replace(/\D/g, ''))
+                  const monthlyLimit = parseRialInput(limit)
                   if (!monthlyLimit) return
                   void saveBudget({ id: createId('bud'), categoryId, monthlyLimit })
                   setLimit('')
@@ -117,7 +118,7 @@ export function ReportsPage({ onScroll }: { onScroll: (compact: boolean) => void
                 className="cta-confirm"
                 type="button"
                 onClick={() => {
-                  const target = Number(goalTarget.replace(/\D/g, ''))
+                  const target = parseRialInput(goalTarget)
                   if (!goalName.trim() || !target) return
                   void saveGoal({ name: goalName.trim(), target, saved: 0, market: goalMarket })
                   setGoalName('')

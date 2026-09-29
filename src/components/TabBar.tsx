@@ -28,7 +28,7 @@ export function TabBar({ compact, onQuickEntry }: { compact?: boolean; onQuickEn
         <span className="ico">📈</span>
         <span className="lbl">گزارش</span>
       </NavLink>
-      <NavLink to="/settings" className={({ isActive }) => `tab${isActive ? ' active' : ''}`}>
+      <NavLink to="/settings" className={({ isActive }) => `tab tab-settings${isActive ? ' active' : ''}`}>
         <span className="ico">⚙</span>
         <span className="lbl">تنظیمات</span>
       </NavLink>

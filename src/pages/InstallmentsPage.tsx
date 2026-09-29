@@ -7,6 +7,7 @@ import { paidCount, planBadge } from '../lib/installments'
 import { todayIso } from '../lib/iso'
 import { formatRial, toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
+import { SettingsButton } from '../components/SettingsButton'
 import { SwipeRow } from '../components/SwipeRow'
 import { useUiActions } from '../components/UiActions'
 import type { InstallmentItem, InstallmentPlan, PlanBadge } from '../types'
@@ -51,6 +52,7 @@ export function InstallmentsPage({
     <div className="app-scroll" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
       <div className="top-row">
         <h1>اقساط</h1>
+        <SettingsButton />
         {empty ? <span style={{ width: 40 }} /> : (
           <button className="head-action" type="button" onClick={onCreate}>برنامه جدید</button>
         )}

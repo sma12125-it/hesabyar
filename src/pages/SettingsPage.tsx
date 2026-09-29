@@ -3,6 +3,7 @@ import { PatternLock } from '../components/PatternLock'
 import { SyncSheet } from '../components/SyncSheet'
 import { loadLock, registerBiometric, setPattern, type AppLockRecord } from '../lib/applock'
 import { rememberedAccountPassword } from '../lib/account'
+import { joinSharedCode } from '../lib/share'
 import { notifyUser } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 import { VaultRecover } from '../components/VaultRecover'
@@ -12,6 +13,9 @@ type Popup = 'cloud' | 'security' | 'vault' | null
 export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => void }) {
   const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light')
   const [popup, setPopup] = useState<Popup>(null)
+  const [shareCode, setShareCode] = useState('')
+  const [shareError, setShareError] = useState<string | null>(null)
+  const [joining, setJoining] = useState(false)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -30,6 +34,41 @@ export function SettingsPage({ onScroll }: { onScroll: (compact: boolean) => voi
         <div className="seg" role="tablist">
           <button className={`seg-btn${theme === 'light' ? ' active' : ''}`} type="button" onClick={() => setTheme('light')}>روشن</button>
           <button className={`seg-btn${theme === 'dark' ? ' active' : ''}`} type="button" onClick={() => setTheme('dark')}>تاریک</button>
+        </div>
+      </section>
+      <section className="lg settings-block">
+        <h2>پیوستن به کارت مشترک</h2>
+        <p className="sheet-sub">کدی که صاحب کارت به شما داده را وارد کنید. درآمد و هزینهٔ همان کارت برای هر دو نفر به‌روز می‌شود.</p>
+        {shareError ? <div className="banner error"><span>{shareError}</span></div> : null}
+        <div className="field-stack">
+          <input
+            className="field-input"
+            placeholder="کد اشتراک"
+            value={shareCode}
+            onChange={(e) => setShareCode(e.target.value.toUpperCase())}
+            aria-label="کد اشتراک"
+          />
+          <button
+            className="cta-confirm"
+            type="button"
+            disabled={joining || shareCode.trim().length < 4}
+            onClick={() => {
+              setJoining(true)
+              setShareError(null)
+              void joinSharedCode(shareCode)
+                .then(() => {
+                  setShareCode('')
+                  notifyUser('به کارت مشترک پیوستید')
+                  window.dispatchEvent(new Event('hy-share-refresh'))
+                })
+                .catch((err: unknown) => {
+                  setShareError(err instanceof Error ? err.message : 'پیوستن انجام نشد')
+                })
+                .finally(() => setJoining(false))
+            }}
+          >
+            {joining ? 'در حال پیوستن…' : 'پیوستن'}
+          </button>
         </div>
       </section>
       <button className="settings-row lg" type="button" onClick={() => setPopup('cloud')}>

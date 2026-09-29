@@ -7,6 +7,7 @@ import { CardFormSheet } from '../components/CardFormSheet'
 import { CardVaultSection } from '../components/CardVaultSection'
 import { AccountRow } from '../components/TxRow'
 import { BalanceHero } from '../components/BalanceHero'
+import { SettingsButton } from '../components/SettingsButton'
 
 export function AccountsPage({
   onScroll,
@@ -29,6 +30,7 @@ export function AccountsPage({
     <div className="app-scroll" onScroll={(e) => onScroll(e.currentTarget.scrollTop > 28)}>
       <div className="top-row">
         <h1>حساب‌ها</h1>
+        <SettingsButton />
       </div>
 
       {visible.length === 0 && archived.length === 0 ? (

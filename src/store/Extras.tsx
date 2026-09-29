@@ -4,6 +4,7 @@ import { checkPasswordVerifier, generateRecoveryCode, rememberedAccountPassword 
 import { loadSession, signIn } from '../lib/sync'
 import { openCards, sealCards, unwrapText, validateCard, wrapText } from '../lib/vault'
 import { createId } from '../lib/ids'
+import { digitsOnly } from '../lib/money'
 import type { BankCard, Budget, ReminderSettings, SavingsGoal } from '../types'
 
 interface VaultBlob {
@@ -220,7 +221,7 @@ export function ExtrasProvider({ children }: { children: ReactNode }) {
         ...input,
         id: existing?.id ?? createId('card'),
         createdAt: existing?.createdAt ?? Date.now(),
-        pan: input.pan.replace(/\D/g, ''),
+        pan: digitsOnly(input.pan),
         accountId: existing?.accountId,
       }
       const next = existing ? current.map((row) => (row.id === card.id ? card : row)) : [...current, card]

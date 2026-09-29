@@ -1,4 +1,6 @@
 import { CloudLamp } from '../components/CloudLamp'
+import { HomeDashboard } from '../components/HomeDashboard'
+import { SettingsButton } from '../components/SettingsButton'
 import { formatRial, toFaDigits } from '../lib/money'
 import { useStore } from '../store/Store'
 import { BalanceHero } from '../components/BalanceHero'
@@ -22,7 +24,7 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
   const { activeAccounts, totalBalance, transactions, accounts, plans, items } = useStore()
   const navigate = useNavigate()
   const ledger = visibleLedger(transactions)
-  const recent = ledger.slice(0, 2)
+  const recent = ledger.slice(0, 5)
   const today = todayIso()
   const hints = homeInstallmentHints(plans, items, today).slice(0, 4)
 
@@ -41,6 +43,7 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
           خانه
         </h1>
         <CloudLamp />
+        <SettingsButton />
         <button
           className="icon-btn"
           type="button"
@@ -79,6 +82,8 @@ export function HomePage({ onScroll, setToast, onQuickEntry, onTransfer, onAll, 
           <span className="label">اقساط</span>
         </button>
       </div>
+
+      <HomeDashboard />
 
       {hints.length > 0 ? (
         <>

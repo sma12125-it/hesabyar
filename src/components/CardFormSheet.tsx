@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { toJalaali } from '../lib/jalaali'
 import { validateCard } from '../lib/vault'
+import { digitsOnly } from '../lib/money'
 import { notifyUser } from '../lib/sync'
 import { useExtras } from '../store/Extras'
 import type { BankCard } from '../types'
@@ -43,7 +44,7 @@ export const IRAN_BANKS = [
 ]
 
 function groupPan(raw: string): string {
-  const digits = raw.replace(/\D/g, '').slice(0, 16)
+  const digits = digitsOnly(raw).slice(0, 16)
   return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
 }
 
@@ -83,7 +84,7 @@ export function CardFormSheet({ card, onClose }: { card?: BankCard; onClose: () 
       return
     }
     try {
-      await saveCard({ id: card?.id, bankName, holder, pan: pan.replace(/\D/g, ''), expiry, cvv, sheba, note: card?.note ?? '', color })
+      await saveCard({ id: card?.id, bankName, holder, pan: digitsOnly(pan), expiry, cvv, sheba, note: card?.note ?? '', color })
       onClose()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'کارت ذخیره نشد'
@@ -134,7 +135,7 @@ export function CardFormSheet({ card, onClose }: { card?: BankCard; onClose: () 
                 </select>
               </label>
             </div>
-            <input className="field-input" inputMode="numeric" placeholder="CVV" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+            <input className="field-input" inputMode="numeric" placeholder="CVV" value={cvv} onChange={(e) => setCvv(digitsOnly(e.target.value).slice(0, 4))} />
             <div className="sheba-row">
               <span>IR</span>
               <input
@@ -143,7 +144,7 @@ export function CardFormSheet({ card, onClose }: { card?: BankCard; onClose: () 
                 placeholder="۲۴ رقم"
                 dir="ltr"
                 value={shebaDigits}
-                onChange={(e) => setShebaDigits(e.target.value.replace(/\D/g, '').slice(0, 24))}
+                onChange={(e) => setShebaDigits(digitsOnly(e.target.value).slice(0, 24))}
               />
             </div>
             <div className="swatch-row" aria-label="رنگ کارت">

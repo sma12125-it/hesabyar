@@ -2,6 +2,7 @@ import { memo } from 'react'
 import { formatRelativeFromIso } from '../lib/dates'
 import { accountIcon, getCategory } from '../lib/categories'
 import { useStore } from '../store/Store'
+import { actorLabel } from '../lib/actor'
 import { formatRial } from '../lib/money'
 import type { Account, Transaction } from '../types'
 import { SwipeRow } from './SwipeRow'
@@ -55,6 +56,8 @@ export const TxRow = memo(function TxRow({
     const other = accounts.find((a) => a.id === otherId)
     if (other) subBits.push(other.name)
   }
+  const who = actorLabel(tx.actorEmail)
+  if (who) subBits.push(`ثبت ${who}`)
 
   return (
     <SwipeRow
@@ -96,6 +99,7 @@ export const AccountRow = memo(function AccountRow({
         <div className="acct-meta">
           <div className="acct-name">{account.name}</div>
           <span className={`badge ${account.type}`}>{account.type === 'cash' ? 'نقد' : 'بانک'}</span>
+          {account.shareId ? <span className="badge bank">مشترک</span> : null}
         </div>
         <div className="acct-bal">
           {formatRial(account.balance)}

@@ -26,6 +26,8 @@ import { InstallmentDetailPage } from './pages/InstallmentDetailPage'
 import { remainingAmount } from './lib/installments'
 import { todayIso } from './lib/iso'
 import { LiveSync } from './components/LiveSync'
+import { SharedSync } from './components/SharedSync'
+import { ShareSheet } from './components/ShareSheet'
 import { ExtrasProvider, useExtras } from './store/Extras'
 import { StoreProvider, useStore } from './store/Store'
 
@@ -41,6 +43,7 @@ export type Sheet =
   | { type: 'settings' }
   | { type: 'voice' }
   | { type: 'sync' }
+  | { type: 'share'; accountId: string }
   | { type: 'confirm'; title: string; message: string; confirmLabel?: string; run: () => Promise<void> }
 
 function Shell() {
@@ -53,6 +56,15 @@ function Shell() {
   const [addOpen, setAddOpen] = useState(false)
 
   const onScroll = useCallback((next: boolean) => setCompact(next), [])
+
+  useEffect(() => {
+    const onShare = (event: Event) => {
+      const accountId = (event as CustomEvent<string>).detail
+      if (accountId) setSheet({ type: 'share', accountId })
+    }
+    window.addEventListener('hy-share-account', onShare)
+    return () => window.removeEventListener('hy-share-account', onShare)
+  }, [])
 
   useEffect(() => {
     const onNotice = (event: Event) => {
@@ -175,6 +187,7 @@ function Shell() {
   return (
     <PhoneShell>
       <LiveSync />
+      <SharedSync />
       <UiActionsContext.Provider value={uiActions}>
       <div className="app">
         <Routes>
@@ -370,6 +383,12 @@ function Shell() {
       ) : null}
 
       {sheet?.type === 'voice' ? <VoiceSheet onClose={() => setSheet(null)} /> : null}
+      {sheet?.type === 'share' && accounts.some((account) => account.id === sheet.accountId) ? (
+        <ShareSheet
+          account={accounts.find((account) => account.id === sheet.accountId)!}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
       {sheet?.type === 'sync' ? <SyncSheet onClose={() => setSheet(null)} /> : null}
 
       {sheet?.type === 'settings' ? (
@@ -432,6 +451,7 @@ function AccountDetailRoute({
       onQuickEntry={() => setSheet({ type: 'quick', kind: 'expense', accountId: id })}
       onTransfer={() => setSheet({ type: 'transfer', fromId: id })}
       onEdit={() => setSheet({ type: 'account', accountId: id })}
+      onShare={() => id && setSheet({ type: 'share', accountId: id })}
     />
   )
 }

@@ -22,6 +22,7 @@ describe('rial formatting', () => {
 
   it('parses Persian and Western digit input', () => {
     expect(parseRialInput('۴۵۰٬۰۰۰')).toBe(450_000)
+    expect(parseRialInput(String.fromCharCode(0x0661, 0x0668, 0x0665))).toBe(185)
     expect(parseRialInput('185000000')).toBe(185_000_000)
     expect(parseRialInput('')).toBe(0)
   })
